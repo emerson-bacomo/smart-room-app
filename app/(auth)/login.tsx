@@ -1,13 +1,16 @@
-import { Button } from "@/components/Button";
-import { alertAsync } from "@/Utilities/AlertUtils";
-import api from "@/Utilities/api";
+import { Button, ButtonProps } from "@/components/button";
+import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { useAuth } from "@/hooks/use-auth";
+import { alertAsync } from "@/utilities/alert-utils";
+import api from "@/utilities/api";
 import { GoogleSignin as GoogleNative } from "@react-native-google-signin/google-signin";
 import * as GoogleBrowser from "expo-auth-session/providers/google"; // Renamed for clarity
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import React, { useEffect } from "react";
-import { Platform, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Platform } from "react-native";
 
 const AUTH_MODE: "auto" | "native" | "browser" = "auto" as "auto" | "native" | "browser";
 
@@ -43,22 +46,30 @@ export default function Login() {
         }
     }, [response]);
 
-    const handleLoginPress = async () => {
+    const handleLoginPress: ButtonProps["onclick"] = async (setBtnLoading) => {
+        if (!setBtnLoading) return;
         if (USE_NATIVE && Platform.OS !== "web") {
             // --- NATIVE METHOD ---
+            setBtnLoading(true);
             try {
                 await GoogleNative.hasPlayServices();
                 const userInfo = await GoogleNative.signIn();
                 const idToken = userInfo.data?.idToken;
-                if (idToken) loginWithBackend(idToken);
+                if (idToken) {
+                    await loginWithBackend(idToken);
+                }
             } catch (error) {
                 console.error("Native Sign-In Error:", error);
+            } finally {
+                setBtnLoading(false);
             }
         } else {
             // --- BROWSER METHOD ---
             promptAsync();
         }
     };
+
+    const { setUser } = useAuth();
 
     const loginWithBackend = async (idToken: string) => {
         try {
@@ -70,8 +81,8 @@ export default function Login() {
                 await SecureStore.setItemAsync("refreshToken", refreshToken);
             }
 
+            setUser(user);
             console.log("Logged in user:", user);
-            alertAsync("Log in success.", user.email);
         } catch (error) {
             console.error("Backend Error:", error);
             alertAsync("Login Failed", "Could not verify with server.");
@@ -79,13 +90,13 @@ export default function Login() {
     };
 
     return (
-        <SafeAreaView className="flex-1 gap-20 items-center justify-center bg-white">
-            <View className="items-center gap-2">
-                <Text className="text-4xl font-bold">Welcome</Text>
-                <Text>Smart Room App ({USE_NATIVE ? "Native" : "Browser"} Mode)</Text>
-            </View>
+        <ThemedSafeAreaView className="flex-1 gap-20 items-center justify-center">
+            <ThemedView className="items-center gap-2">
+                <ThemedText type="title">Welcome</ThemedText>
+                <ThemedText>Smart Room App ({USE_NATIVE ? "Native" : "Browser"} Mode)</ThemedText>
+            </ThemedView>
 
             <Button label="Login with Google" className="px-8" onclick={handleLoginPress} />
-        </SafeAreaView>
+        </ThemedSafeAreaView>
     );
 }

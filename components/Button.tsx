@@ -22,7 +22,7 @@ const buttonCVA = cva("relative rounded-lg", {
             bigger: "",
         },
         height: {
-            none: "",
+            none: "h-12",
             tall: "h-12",
         },
     },
