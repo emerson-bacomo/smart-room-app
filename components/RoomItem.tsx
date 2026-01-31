@@ -1,5 +1,4 @@
-import { Room, dbRenameRoom } from "@/db/rooms";
-import * as SQLite from "expo-sqlite";
+import { Room } from "@/app/rooms";
 import React, { useState } from "react";
 import { Alert, Modal, Pressable, Text, TextInput, View } from "react-native";
 import { Menu, MenuItem } from "react-native-material-menu";
@@ -11,8 +10,6 @@ interface RoomItemProps {
 
 export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
     const [menuVisible, setMenuVisible] = useState(false);
-
-    const db = SQLite.useSQLiteContext();
 
     const [renameModalVisible, setRenameModalVisible] = useState(false);
     const [renameRoomName, setRenameRoomName] = useState("");
@@ -45,7 +42,7 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
         if (!newName) return;
 
         try {
-            dbRenameRoom(db, item.id, newName);
+            // dbRenameRoom(db, item.id, newName);
             setRenameModalVisible(false);
             loadRooms();
         } catch (err: any) {

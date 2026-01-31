@@ -1,25 +1,30 @@
 import { BaselineNoteAdd } from "@/assets/images/icons";
 import { CreateRoomModal, CreateRoomModalRef } from "@/components/CreateRoomModal";
 import { RoomItem } from "@/components/RoomItem";
-import { Room, dbGetRooms } from "@/db/rooms";
+import api from "@/Utilities/api";
 import { useFocusEffect } from "@react-navigation/native";
-import * as SQLite from "expo-sqlite";
 import React, { useCallback, useRef, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export const Rooms: React.FC = () => {
+export type Room = {
+    id: string;
+    name: string;
+};
+
+const Rooms: React.FC = () => {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [refreshing, setRefreshing] = useState(false);
 
-    const db = SQLite.useSQLiteContext();
-
     const createRoomModalRef = useRef<CreateRoomModalRef>(null);
 
     const loadRooms = useCallback(() => {
-        dbGetRooms(db, setRooms);
-    }, [db]);
+        api.get("/rooms").then((res) => {
+            // setRooms(res.data);
+            console.log(res.data);
+        });
+    }, []);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -84,3 +89,5 @@ export const Rooms: React.FC = () => {
         </SafeAreaView>
     );
 };
+
+export default Rooms;

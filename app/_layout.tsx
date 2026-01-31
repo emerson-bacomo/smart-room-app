@@ -4,27 +4,24 @@ import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import "../global.css";
 
-import { migrateDbRoomsIfNeeded } from "@/db/rooms";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import * as SQLite from "expo-sqlite";
+import { useAuth } from "@/hooks/useAuth";
 import React from "react";
-
-export const unstable_settings = {
-    anchor: "(tabs)",
-};
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
+    const { user, loading } = useAuth();
+
+    if (loading) return null;
 
     return (
         <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-            <SQLite.SQLiteProvider databaseName="smartRoomApp.db" onInit={migrateDbRoomsIfNeeded}>
-                <Stack>
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
-                </Stack>
-                <StatusBar style="auto" />
-            </SQLite.SQLiteProvider>
+            <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: "modal", title: "Modal" }} />
+            </Stack>
+            <StatusBar style="auto" />
         </ThemeProvider>
     );
 }

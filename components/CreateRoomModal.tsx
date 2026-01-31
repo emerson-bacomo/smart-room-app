@@ -1,6 +1,4 @@
-import { dbCreateRoom, Room } from "@/db/rooms";
-import { alertAsync } from "@/Utilities/AlertUtils";
-import * as SQLite from "expo-sqlite";
+import { Room } from "@/app/rooms";
 import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { Alert, Modal, Pressable, Text, TextInput, View } from "react-native";
 
@@ -17,7 +15,6 @@ export interface CreateRoomModalRef {
 export const CreateRoomModal = forwardRef<CreateRoomModalRef, CreateRoomModalProps>(({ rooms, onCreated }, ref) => {
     const [visible, setVisible] = useState(false);
     const [RoomName, setRoomName] = useState("");
-    const db = SQLite.useSQLiteContext();
 
     // Expose open/close methods via ref
     useImperativeHandle(ref, () => ({
@@ -32,17 +29,17 @@ export const CreateRoomModal = forwardRef<CreateRoomModalRef, CreateRoomModalPro
         const name = RoomName.trim() || `Room ${rooms.length + 1}`;
 
         try {
-            const Room = dbCreateRoom(db, {
-                name,
-            });
+            // const Room = dbCreateRoom(db, {
+            //     name,
+            // });
 
-            if (!Room) {
-                await alertAsync("Error", "Could not create Room.");
-                return;
-            }
+            // if (!Room) {
+            //     await alertAsync("Error", "Could not create Room.");
+            //     return;
+            // }
 
-            await alertAsync("Room Created", `Room "${Room.name}" created successfully.`);
-            onCreated?.(Room);
+            // await alertAsync("Room Created", `Room "${Room.name}" created successfully.`);
+            // onCreated?.(Room);
             setVisible(false);
         } catch (err) {
             console.error("Failed to create Room:", err);
