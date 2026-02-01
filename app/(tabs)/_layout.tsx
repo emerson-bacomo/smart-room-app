@@ -31,18 +31,18 @@ export default function TabLayout() {
                 name="index"
                 options={{
                     title: "Home",
-                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="home" color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="profile"
                 options={{
-                    title: "Profile",
+                    title: "You",
                     tabBarIcon: ({ color }) =>
                         user?.avatar ? (
                             <Image source={{ uri: user.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} />
                         ) : (
-                            <IconSymbol size={28} name="person.crop.circle.fill" color={color} />
+                            <IconSymbol size={28} name="person" color={color} />
                         ),
                 }}
             />

@@ -1,4 +1,3 @@
-import { BaselineNoteAdd } from "@/assets/images/icons";
 import { AppModal, AppModalRef } from "@/components/app-modal";
 import { Button } from "@/components/button";
 import { RoomItem } from "@/components/room-item";
@@ -6,6 +5,7 @@ import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
 import { useFocusEffect } from "@react-navigation/native";
@@ -60,7 +60,7 @@ export default function RoomsScreen() {
                 <ThemedText type="subtitle">My Rooms</ThemedText>
             </ThemedView>
 
-            <ThemedTextInput className="mb-4" placeholder="Search Rooms..." value={searchQuery} onChangeText={setSearchQuery} />
+            <ThemedTextInput className="mb-10" placeholder="Search Rooms..." value={searchQuery} onChangeText={setSearchQuery} />
 
             <FlatList
                 className="flex-1"
@@ -84,7 +84,7 @@ export default function RoomsScreen() {
                 className="absolute bottom-8 right-8 h-14 w-14 rounded-full shadow-lg"
                 onclick={() => createRoomModalRef.current?.open()}
             >
-                <BaselineNoteAdd className="size-7 text-white" />
+                <IconSymbol name="add" size={20} />
             </Button>
 
             <AppModal

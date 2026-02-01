@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, FlatList, Modal } from "react-native";
+import { Alert, FlatList } from "react-native";
 
 // Types
 type SwitchState = {
@@ -46,9 +46,8 @@ export default function RoomDetailsScreen() {
     const [selectedDevice, setSelectedDevice] = useState<SwitchDevice | null>(null);
 
     // Camera Modal
-    const [cameraModalVisible, setCameraModalVisible] = useState(false);
-
-    const cameraModalRef = useRef<AppModalRef>(null);
+    const cameraGridModalRef = useRef<AppModalRef>(null);
+    const addCameraModalRef = useRef<AppModalRef>(null);
     const switchModalRef = useRef<AppModalRef>(null);
 
     const loadRoom = async () => {
@@ -73,7 +72,6 @@ export default function RoomDetailsScreen() {
         if (id) loadRoom();
     }, [id]);
 
-    const [addCameraVisible, setAddCameraVisible] = useState(false);
     const [newCamId, setNewCamId] = useState("");
     const [newCamPassword, setNewCamPassword] = useState("");
 
@@ -86,7 +84,7 @@ export default function RoomDetailsScreen() {
                 password: newCamPassword,
                 roomId: id,
             });
-            setAddCameraVisible(false);
+            addCameraModalRef.current?.close();
             setNewCamId("");
             setNewCamPassword("");
             loadRoom();
@@ -136,6 +134,28 @@ export default function RoomDetailsScreen() {
         <ThemedSafeAreaView className="flex-1" edges={["bottom", "left", "right"]}>
             {/* Top: Camera Section (Persistent) */}
             <ThemedView className="h-64 bg-black relative">
+                <ThemedView className="px-5 flex-row justify-between items-center mb-4">
+                    <ThemedText type="subtitle">Cameras</ThemedText>
+                    <ThemedView className="flex-row gap-4">
+                        <Button
+                            onclick={() => cameraGridModalRef.current?.open()}
+                            variant="none"
+                            className="p-1.5 rounded-lg border border-gray-200 aspect-square"
+                            labelClassName="text-black font-medium"
+                        >
+                            <IconSymbol name="camera-reverse-outline" />
+                        </Button>
+                        <Button
+                            onclick={() => addCameraModalRef.current?.open()}
+                            variant="none"
+                            className="p-2 rounded-lg border border-gray-200 aspect-square"
+                            labelClassName="text-black font-medium"
+                        >
+                            <IconSymbol name="video-camera-add" />
+                        </Button>
+                    </ThemedView>
+                </ThemedView>
+
                 {selectedCamera ? (
                     <ThemedView className="flex-1 items-center justify-center bg-gray-900">
                         {/* Mock Live View */}
@@ -147,13 +167,6 @@ export default function RoomDetailsScreen() {
                         <ThemedText className="text-gray-400">No Camera Selected</ThemedText>
                     </ThemedView>
                 )}
-
-                <Button
-                    onclick={() => setCameraModalVisible(true)}
-                    className="absolute bottom-4 right-4 bg-black/60 px-4 py-2 rounded-full border border-white/20"
-                    label="Change Camera"
-                    labelClassName="text-white font-medium"
-                />
             </ThemedView>
 
             {/* Bottom: Device Section (Navigable) */}
@@ -162,26 +175,14 @@ export default function RoomDetailsScreen() {
                     // VIEW 1: Device List
                     <ThemedView className="flex-1">
                         <ThemedView className="flex-row justify-between items-center mb-4">
-                            <ThemedText type="subtitle">Devices</ThemedText>
-                            <ThemedView className="flex-row gap-2">
-                                <Button
-                                    onclick={() => setAddCameraVisible(true)}
-                                    variant="none"
-                                    className="p-2 bg-gray-100 rounded-lg"
-                                >
-                                    <IconSymbol name="camera.fill" size={20} color="black" />
-                                </Button>
-                                <Button
-                                    onclick={() => switchModalRef.current?.open()}
-                                    variant="none"
-                                    className="p-2 bg-gray-100 rounded-lg"
-                                >
-                                    <IconSymbol name="lightbulb.fill" size={20} color="black" />
-                                </Button>
-                                <Button onclick={loadRoom} variant="none" className="p-2 bg-gray-100 rounded-lg">
-                                    <IconSymbol name="arrow.clockwise" size={20} color="black" />
-                                </Button>
-                            </ThemedView>
+                            <ThemedText type="subtitle">Switch Devices</ThemedText>
+                            <Button
+                                onclick={() => switchModalRef.current?.open()}
+                                variant="none"
+                                className="p-2 rounded-lg border border-gray-200 aspect-square"
+                            >
+                                <IconSymbol name="add" />
+                            </Button>
                         </ThemedView>
 
                         <FlatList
@@ -192,21 +193,16 @@ export default function RoomDetailsScreen() {
                                     variant="none"
                                     layout="plain"
                                     onclick={() => handleDevicePress(item)}
-                                    className="flex-row items-center justify-between p-4 mb-3 bg-gray-100 rounded-xl"
+                                    className="flex-row items-center justify-between px-3 rounded-xl"
                                 >
-                                    <ThemedView className="flex-row items-center gap-3 bg-transparent">
-                                        <IconSymbol name="switch.2" size={24} color="#4B5563" />
-                                        <ThemedText type="defaultSemiBold" className="text-black">
-                                            {item.name}
-                                        </ThemedText>
-                                    </ThemedView>
+                                    <ThemedText>{item.name}</ThemedText>
 
-                                    <ThemedView className="flex-row items-center gap-2 bg-transparent">
-                                        <ThemedText className="text-gray-500 text-sm">Off</ThemedText>
+                                    <ThemedView className="flex-row items-center gap-2">
+                                        <ThemedText>{item.state ? "On" : "Off"}</ThemedText>
                                         <Button
                                             variant="none"
                                             layout="plain"
-                                            onclick={(setBtnLoading) => {
+                                            onclick={() => {
                                                 toggleDevice(item.id, false);
                                             }}
                                             className="w-12 h-7 rounded-full items-start p-1 bg-gray-300"
@@ -292,81 +288,56 @@ export default function RoomDetailsScreen() {
             </ThemedView>
 
             {/* Camera Grid Modal */}
-            <Modal visible={cameraModalVisible} transparent animationType="slide">
-                <ThemedSafeAreaView className="flex-1 bg-black/90">
-                    <ThemedView className="flex-1 p-5 bg-transparent">
-                        <ThemedView className="flex-row justify-between items-center mb-6 bg-transparent">
-                            <ThemedText className="text-white text-xl font-bold">Select Camera</ThemedText>
-                            <Button onclick={() => setCameraModalVisible(false)} variant="none" layout="plain">
-                                <IconSymbol name="xmark.circle.fill" size={30} color="white" />
-                            </Button>
-                        </ThemedView>
-
-                        <FlatList
-                            data={room.cameras}
-                            numColumns={2}
-                            keyExtractor={(item) => item.id}
-                            columnWrapperStyle={{ gap: 10 }}
-                            renderItem={({ item }) => (
-                                <Button
-                                    onclick={() => {
-                                        setSelectedCamera(item);
-                                        setCameraModalVisible(false);
-                                    }}
-                                    variant="none"
-                                    layout="plain"
-                                    className={`flex-1 aspect-video bg-gray-800 rounded-lg p-2 items-center justify-center border-2 ${selectedCamera?.id === item.id ? "border-blue-500" : "border-transparent"}`}
-                                >
-                                    <IconSymbol name="video" size={32} color="white" />
-                                    <ThemedText className="text-white mt-2 font-medium">{item.name}</ThemedText>
-                                </Button>
-                            )}
-                        />
-                    </ThemedView>
-                </ThemedSafeAreaView>
-            </Modal>
+            <AppModal ref={cameraGridModalRef} title="Select Camera">
+                <FlatList
+                    data={room.cameras}
+                    numColumns={2}
+                    keyExtractor={(item) => item.id}
+                    columnWrapperStyle={{ gap: 10 }}
+                    renderItem={({ item }) => (
+                        <Button
+                            onclick={() => {
+                                setSelectedCamera(item);
+                                cameraGridModalRef.current?.close();
+                            }}
+                            variant="none"
+                            layout="plain"
+                            className={`flex-1 aspect-video bg-gray-800 rounded-lg p-2 items-center justify-center border-2 ${selectedCamera?.id === item.id ? "border-blue-500" : "border-transparent"}`}
+                        >
+                            <IconSymbol name="video" size={32} color="white" />
+                            <ThemedText className="text-white mt-2 font-medium text-center">{item.name}</ThemedText>
+                        </Button>
+                    )}
+                />
+                <Button
+                    label="Close"
+                    variant="none"
+                    className="bg-gray-200 mt-4"
+                    labelClassName="text-black"
+                    onclick={() => cameraGridModalRef.current?.close()}
+                />
+            </AppModal>
 
             {/* Add Camera Modal */}
-            <Modal visible={addCameraVisible} transparent animationType="fade">
-                <ThemedView className="flex-1 justify-center bg-black/40 px-6">
-                    <ThemedView className="rounded-xl p-6">
-                        <ThemedText type="subtitle" className="mb-4">
-                            Link External Camera
-                        </ThemedText>
+            <AppModal
+                ref={addCameraModalRef}
+                title="Link External Camera"
+                onSubmitOverride={handleAddCamera}
+                submitLabel="Link Camera"
+            >
+                <ThemedText className="mb-1 text-gray-500">Camera ID / Name</ThemedText>
+                <ThemedTextInput className="mb-4" value={newCamId} onChangeText={setNewCamId} placeholder="Enter Camera ID" />
 
-                        <ThemedText className="mb-1 text-gray-500">Camera ID / Name</ThemedText>
-                        <ThemedTextInput
-                            className="mb-4"
-                            value={newCamId}
-                            onChangeText={setNewCamId}
-                            placeholder="Enter Camera ID"
-                        />
+                <ThemedText className="mb-1 text-gray-500">Password</ThemedText>
+                <ThemedTextInput
+                    className="mb-6"
+                    value={newCamPassword}
+                    onChangeText={setNewCamPassword}
+                    placeholder="Enter Camera Password"
+                    secureTextEntry
+                />
+            </AppModal>
 
-                        <ThemedText className="mb-1 text-gray-500">Password</ThemedText>
-                        <ThemedTextInput
-                            className="mb-6"
-                            value={newCamPassword}
-                            onChangeText={setNewCamPassword}
-                            placeholder="Enter Camera Password"
-                            secureTextEntry
-                        />
-
-                        <ThemedView className="flex-row justify-end gap-2 bg-transparent">
-                            <Button
-                                label="Cancel"
-                                variant="none"
-                                className="bg-gray-200"
-                                labelClassName="text-black"
-                                onclick={() => setAddCameraVisible(false)}
-                            />
-
-                            <Button label="Link Camera" variant="cta" onclick={handleAddCamera} />
-                        </ThemedView>
-                    </ThemedView>
-                </ThemedView>
-            </Modal>
-
-            {/* <AppModal ref={cameraModalRef} ... /> Replaced by custom modal */}
             <AppModal ref={switchModalRef} title="Add Switch" placeholder="Switch Name" onSubmit={handleAddSwitch} />
         </ThemedSafeAreaView>
     );
@@ -379,7 +350,7 @@ function ControlBtn({ icon, label }: { icon: string; label?: string }) {
             onclick={() => {}}
             className="w-12 h-12 bg-white rounded-full items-center justify-center shadow-sm"
         >
-            <IconSymbol name={icon as any} size={24} color="black" />
+            <IconSymbol name={icon as any} size={24} />
         </Button>
     );
 }

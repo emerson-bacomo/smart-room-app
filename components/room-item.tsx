@@ -49,7 +49,7 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
     };
 
     return (
-        <ThemedView className="mb-3 flex-row items-center justify-between rounded-lg p-4 bg-gray-100">
+        <ThemedView className="mb-3 flex-row items-center justify-between rounded-lg p-4">
             <Button
                 variant="none"
                 layout="plain"
