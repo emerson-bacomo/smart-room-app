@@ -7,6 +7,7 @@ import "../global.css";
 
 import { AuthProvider } from "@/context/auth-context";
 import { ThemeProvider as AppThemeProvider } from "@/context/theme-context";
+import { MqttProvider } from "@/context/mqtt-context";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import React from "react";
@@ -15,7 +16,9 @@ export default function RootLayout() {
     return (
         <AppThemeProvider>
             <AuthProvider>
-                <RootLayoutContent />
+                <MqttProvider>
+                    <RootLayoutContent />
+                </MqttProvider>
             </AuthProvider>
         </AppThemeProvider>
     );

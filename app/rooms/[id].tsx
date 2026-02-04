@@ -6,21 +6,27 @@ import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useAuth } from "@/hooks/use-auth";
+import { useMqtt } from "@/context/mqtt-context";
 import api from "@/utilities/api";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Alert, FlatList } from "react-native";
 
 // Types
-type SwitchState = {
+type SwitchToggle = {
+    id: string;
+    name: string;
     type: "on" | "off";
     isOn: boolean;
+    x: number;
+    y: number;
+    z: number;
 };
 
 type SwitchDevice = {
     id: string;
     name: string;
-    state: SwitchState[];
+    toggles: SwitchToggle[];
 };
 
 type Camera = {
@@ -44,6 +50,11 @@ export default function RoomDetailsScreen() {
     const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
     const [viewMode, setViewMode] = useState<"list" | "control">("list");
     const [selectedDevice, setSelectedDevice] = useState<SwitchDevice | null>(null);
+    const [selectedSwitch, setSelectedSwitch] = useState<SwitchToggle | null>(null);
+    const { deviceStatuses, publishCommand } = useMqtt();
+    const [calibrationMode, setCalibrationMode] = useState(false);
+    const [xyz, setXyz] = useState({ x: "0", y: "0", z: "0" });
+    const [devicePassword, setDevicePassword] = useState("");
 
     // Camera Modal
     const cameraGridModalRef = useRef<AppModalRef>(null);
@@ -98,7 +109,12 @@ export default function RoomDetailsScreen() {
 
     const handleAddSwitch = async (name: string) => {
         try {
-            await api.post("/devices", { name, roomId: id });
+            await api.post("/devices", {
+                name,
+                roomId: id,
+                password: devicePassword,
+            });
+            setDevicePassword("");
             loadRoom();
         } catch (error) {
             console.error(error);
@@ -106,22 +122,56 @@ export default function RoomDetailsScreen() {
         }
     };
 
-    const handleDevicePress = (device: SwitchDevice) => {
+    const handleSwitchPress = (device: SwitchDevice, sw: SwitchToggle) => {
         setSelectedDevice(device);
+        setSelectedSwitch(sw);
+        setXyz({ x: sw.x.toString(), y: sw.y.toString(), z: sw.z.toString() });
+        setCalibrationMode(true);
         setViewMode("control");
     };
 
     const handleBackToList = () => {
         setSelectedDevice(null);
+        setSelectedSwitch(null);
+        setCalibrationMode(false);
         setViewMode("list");
     };
 
-    const toggleDevice = async (deviceId: string, currentState: boolean) => {
-        // Optimistic update or call API (API update recommended)
-        // For now, simpler implementation:
-        console.log("Toggle device", deviceId, !currentState);
-        // Implement API call to toggle state here
+    const toggleSwitch = async (deviceId: string, switchId: string, currentState: boolean) => {
+        publishCommand(deviceId, { switchId, power: currentState ? "OFF" : "ON" });
     };
+
+    const handleCalibration = async () => {
+        if (!selectedDevice || !selectedSwitch) return;
+        const deviceUrl = `http://${selectedDevice.name}.local/move?switchId=${selectedSwitch.id}&x=${xyz.x}&y=${xyz.y}&z=${xyz.z}`;
+        try {
+            const res = await fetch(deviceUrl);
+            if (!res.ok) throw new Error("Request failed");
+
+            // Also update the backend with new XYZ
+            await api.patch(`/switches/${selectedSwitch.id}/calibration`, {
+                x: parseFloat(xyz.x),
+                y: parseFloat(xyz.y),
+                z: parseFloat(xyz.z),
+            });
+
+            Alert.alert("Success", "Calibration command sent and saved.");
+            loadRoom();
+        } catch (error) {
+            Alert.alert("Connection Failed", `Please ensure you are on the same Wi-Fi network as ${selectedDevice.name}.`);
+        }
+    };
+
+    const flattenedSwitches = useMemo(() => {
+        if (!room) return [];
+        return room.switchDevices.flatMap((device) =>
+            device.toggles.map((sw) => ({
+                ...sw,
+                deviceName: device.name,
+                deviceId: device.id,
+            })),
+        );
+    }, [room]);
 
     if (!room)
         return (
@@ -186,32 +236,48 @@ export default function RoomDetailsScreen() {
                         </ThemedView>
 
                         <FlatList
-                            data={room.switchDevices}
+                            data={flattenedSwitches}
                             keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <Button
-                                    variant="none"
-                                    layout="plain"
-                                    onclick={() => handleDevicePress(item)}
-                                    className="flex-row items-center justify-between px-3 rounded-xl"
-                                >
-                                    <ThemedText>{item.name}</ThemedText>
-
-                                    <ThemedView className="flex-row items-center gap-2">
-                                        <ThemedText>{item.state ? "On" : "Off"}</ThemedText>
+                            renderItem={({ item }) => {
+                                const device = room.switchDevices.find((d) => d.id === item.deviceId)!;
+                                return (
+                                    <ThemedView className="mb-4 bg-gray-50 rounded-xl p-2 border border-gray-100">
+                                        <ThemedText className="text-gray-400 text-xs px-2 mb-1 uppercase font-bold">
+                                            {item.deviceName}
+                                        </ThemedText>
                                         <Button
                                             variant="none"
                                             layout="plain"
-                                            onclick={() => {
-                                                toggleDevice(item.id, false);
-                                            }}
-                                            className="w-12 h-7 rounded-full items-start p-1 bg-gray-300"
+                                            onclick={() => handleSwitchPress(device, item)}
+                                            className="flex-row items-center justify-between px-2"
                                         >
-                                            <ThemedView className="w-5 h-5 rounded-full bg-white shadow" />
+                                            <ThemedText className="font-medium">{item.name}</ThemedText>
+
+                                            <ThemedView className="flex-row items-center gap-4">
+                                                <ThemedText
+                                                    className={
+                                                        deviceStatuses[item.deviceId] === "online"
+                                                            ? "text-green-500 text-xs"
+                                                            : "text-gray-400 text-xs"
+                                                    }
+                                                >
+                                                    {deviceStatuses[item.deviceId] === "online" ? "Online" : "Offline"}
+                                                </ThemedText>
+                                                <Button
+                                                    variant="none"
+                                                    layout="plain"
+                                                    onclick={() => toggleSwitch(item.deviceId, item.id, item.isOn)}
+                                                    className={`w-12 h-7 rounded-full items-start p-1 ${item.isOn ? "bg-blue-500" : "bg-gray-300"}`}
+                                                >
+                                                    <ThemedView
+                                                        className={`w-5 h-5 rounded-full bg-white shadow ${item.isOn ? "self-end" : "self-start"}`}
+                                                    />
+                                                </Button>
+                                            </ThemedView>
                                         </Button>
                                     </ThemedView>
-                                </Button>
-                            )}
+                                );
+                            }}
                             ListEmptyComponent={
                                 <ThemedText className="text-center text-gray-400 mt-10">No devices in this room.</ThemedText>
                             }
@@ -228,60 +294,68 @@ export default function RoomDetailsScreen() {
                         </Button>
 
                         <ThemedView className="items-center mb-8">
-                            <ThemedText type="subtitle" className="mb-1">
+                            <ThemedText type="subtitle" className="mb-1 text-gray-400 text-sm uppercase">
                                 {selectedDevice?.name}
                             </ThemedText>
-                            <ThemedText className="text-gray-500">Device Control</ThemedText>
+                            <ThemedText type="subtitle" className="mb-1">
+                                {selectedSwitch?.name}
+                            </ThemedText>
+                            <ThemedText className="text-gray-500">Calibration & Control</ThemedText>
                         </ThemedView>
 
                         {/* On/Off States */}
-                        <ThemedView className="flex-row gap-4 mb-10">
+                        <ThemedView className="flex-row gap-4 mb-6">
                             <Button
                                 variant="none"
                                 layout="plain"
-                                className="flex-1 bg-green-100 p-6 rounded-xl items-center border border-green-200"
-                                onclick={() => {}}
+                                className={`flex-1 p-6 rounded-xl items-center border ${selectedSwitch?.isOn ? "bg-green-100 border-green-200" : "bg-gray-100 border-gray-200"}`}
+                                onclick={() => toggleSwitch(selectedDevice?.id!, selectedSwitch?.id!, false)}
                             >
-                                <ThemedText className="text-green-800 font-bold text-xl">ON</ThemedText>
+                                <ThemedText
+                                    className={`${selectedSwitch?.isOn ? "text-green-800" : "text-gray-400"} font-bold text-xl`}
+                                >
+                                    ON
+                                </ThemedText>
                             </Button>
                             <Button
                                 variant="none"
                                 layout="plain"
-                                className="flex-1 bg-red-100 p-6 rounded-xl items-center border border-red-200"
-                                onclick={() => {}}
+                                className={`flex-1 p-6 rounded-xl items-center border ${!selectedSwitch?.isOn ? "bg-red-100 border-red-200" : "bg-gray-100 border-gray-200"}`}
+                                onclick={() => toggleSwitch(selectedDevice?.id!, selectedSwitch?.id!, true)}
                             >
-                                <ThemedText className="text-red-800 font-bold text-xl">OFF</ThemedText>
+                                <ThemedText
+                                    className={`${!selectedSwitch?.isOn ? "text-red-800" : "text-gray-400"} font-bold text-xl`}
+                                >
+                                    OFF
+                                </ThemedText>
                             </Button>
                         </ThemedView>
 
-                        {/* D-Pad Control */}
-                        <ThemedView className="items-center justify-center">
-                            <ThemedView className="w-64 h-64 bg-gray-100 rounded-full relative items-center justify-center p-4">
-                                <ThemedView className="absolute top-4">
-                                    <ControlBtn icon="chevron.up" label="Up" />
-                                </ThemedView>
-                                <ThemedView className="absolute bottom-4">
-                                    <ControlBtn icon="chevron.down" label="Down" />
-                                </ThemedView>
-                                <ThemedView className="absolute left-4">
-                                    <ControlBtn icon="chevron.left" label="Left" />
-                                </ThemedView>
-                                <ThemedView className="absolute right-4">
-                                    <ControlBtn icon="chevron.right" label="Right" />
-                                </ThemedView>
-
-                                {/* Center / Forward/Backward */}
-                                <ThemedView className="flex-row gap-4">
-                                    <ThemedView className="items-center">
-                                        <ControlBtn icon="plus" />
-                                        <ThemedText className="text-xs text-gray-500 mt-1">Fwd</ThemedText>
-                                    </ThemedView>
-                                    <ThemedView className="items-center">
-                                        <ControlBtn icon="minus" />
-                                        <ThemedText className="text-xs text-gray-500 mt-1">Back</ThemedText>
-                                    </ThemedView>
-                                </ThemedView>
+                        <ThemedView className="gap-4 bg-gray-100 p-4 rounded-xl mb-6">
+                            <ThemedView className="flex-row gap-2">
+                                <ThemedTextInput
+                                    className="flex-1 bg-white"
+                                    placeholder="X"
+                                    value={xyz.x}
+                                    onChangeText={(val) => setXyz((prev) => ({ ...prev, x: val }))}
+                                    keyboardType="numeric"
+                                />
+                                <ThemedTextInput
+                                    className="flex-1 bg-white"
+                                    placeholder="Y"
+                                    value={xyz.y}
+                                    onChangeText={(val) => setXyz((prev) => ({ ...prev, y: val }))}
+                                    keyboardType="numeric"
+                                />
+                                <ThemedTextInput
+                                    className="flex-1 bg-white"
+                                    placeholder="Z"
+                                    value={xyz.z}
+                                    onChangeText={(val) => setXyz((prev) => ({ ...prev, z: val }))}
+                                    keyboardType="numeric"
+                                />
                             </ThemedView>
+                            <Button label="Update Calibration (.local)" onclick={handleCalibration} />
                         </ThemedView>
                     </ThemedView>
                 )}
@@ -338,7 +412,16 @@ export default function RoomDetailsScreen() {
                 />
             </AppModal>
 
-            <AppModal ref={switchModalRef} title="Add Switch" placeholder="Switch Name" onSubmit={handleAddSwitch} />
+            <AppModal ref={switchModalRef} title="Add Switch" placeholder="Switch Name" onSubmit={handleAddSwitch}>
+                <ThemedText className="mb-1 text-gray-500">Security Password</ThemedText>
+                <ThemedTextInput
+                    className="mb-6"
+                    value={devicePassword}
+                    onChangeText={setDevicePassword}
+                    placeholder="Enter Device Password"
+                    secureTextEntry
+                />
+            </AppModal>
         </ThemedSafeAreaView>
     );
 }
