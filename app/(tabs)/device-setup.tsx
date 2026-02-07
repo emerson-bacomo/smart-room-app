@@ -1,17 +1,18 @@
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/button";
 import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
+import Feather from "@expo/vector-icons/Feather";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "expo-router";
 import React, { useState } from "react";
 import { Alert, PermissionsAndroid, Platform, Pressable, ScrollView, View } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
-
-// ... (Rest of the file)
 
 interface WifiNetwork {
     SSID: string;
@@ -34,8 +35,8 @@ export default function DeviceSetupScreen() {
     const [selectedDevices, setSelectedDevices] = useState<{ [key: string]: boolean }>({});
     const [isScanning, setIsScanning] = useState(false);
     const [setupMode, setSetupMode] = useState(false);
-    const [targetSsid, setTargetSsid] = useState("");
-    const [password, setPassword] = useState("");
+    const [targetSsid, setTargetSsid] = useState("POCO F7");
+    const [password, setPassword] = useState("00000000");
     const [availableNetworks, setAvailableNetworks] = useState<WifiNetwork[]>([]);
     const [isScanningNetworks, setIsScanningNetworks] = useState(false);
     const [showNetworkList, setShowNetworkList] = useState(false);
@@ -164,6 +165,17 @@ export default function DeviceSetupScreen() {
         setIsScanning(true);
         console.log("Starting device scan...");
 
+        // Request location permission (required for WiFi scanning on Android)
+        const hasPermission = await requestPermissions();
+        if (!hasPermission) {
+            Alert.alert(
+                "Permission Required",
+                "Location permission is required to scan for WiFi networks on Android. Please grant the permission in your device settings.",
+            );
+            setIsScanning(false);
+            return;
+        }
+
         if (!WifiManager || !WifiManager.reScanAndLoadWifiList) {
             Alert.alert("Native module missing", "Wi-Fi scanning is only available in a native build, not in Expo Go.");
             setIsScanning(false);
@@ -173,7 +185,6 @@ export default function DeviceSetupScreen() {
         try {
             console.log("Triggering Wi-Fi re-scan...");
             const wifiList = await WifiManager.reScanAndLoadWifiList();
-            console.log("Raw Wi-Fi List:", wifiList);
 
             if (!wifiList || wifiList.length === 0) {
                 console.warn("Wi-Fi list is empty. Ensure GPS/Location is ON.");
@@ -182,7 +193,7 @@ export default function DeviceSetupScreen() {
                 return;
             }
 
-            const filtered = wifiList.filter((net) => net.SSID && net.SSID.startsWith("SwitchTogglerDevice-"));
+            const filtered = wifiList.filter((net) => net.SSID && net.SSID.startsWith("switch-toggler-"));
             console.log("Filtered devices:", filtered);
             setDevices(
                 filtered.map((n) => ({
@@ -196,7 +207,7 @@ export default function DeviceSetupScreen() {
             if (filtered.length === 0) {
                 Alert.alert(
                     "No devices found",
-                    "Make sure your devices are in setup mode and nearby (names should start with 'SwitchTogglerDevice-').",
+                    "Make sure your devices are in setup mode and nearby (names should start with 'switch-toggler-').",
                 );
             }
         } catch (err) {
@@ -225,7 +236,7 @@ export default function DeviceSetupScreen() {
 
         try {
             const wifiList = await WifiManager.reScanAndLoadWifiList();
-            const networks = wifiList.filter((n) => n.SSID && !n.SSID.startsWith("SwitchTogglerDevice-"));
+            const networks = wifiList.filter((n) => n.SSID && !n.SSID.startsWith("switch-toggler-"));
             setAvailableNetworks(networks);
             setShowNetworkList(true);
 
@@ -256,6 +267,8 @@ export default function DeviceSetupScreen() {
         setSetupMode(true);
     };
 
+    console.log(user);
+
     const handleConnect = async () => {
         if (!targetSsid || !password) {
             Alert.alert("Missing information", "Please provide both SSID and password for the target Wi-Fi.");
@@ -274,6 +287,7 @@ export default function DeviceSetupScreen() {
         setSetupStatus(newStatus);
 
         try {
+            console.log(selectedList);
             for (const device of selectedList) {
                 setSetupStatus((prev) => ({ ...prev, [device.BSSID]: "connecting" }));
                 console.log(`Connecting to device hotspot: ${device.SSID}`);
@@ -308,6 +322,7 @@ export default function DeviceSetupScreen() {
                 } catch (err) {
                     console.error(`Error provisioning ${device.SSID}:`, err);
                     setSetupStatus((prev) => ({ ...prev, [device.BSSID]: "error" }));
+                    return;
                 }
             }
 
@@ -328,7 +343,7 @@ export default function DeviceSetupScreen() {
             <ThemedSafeAreaView className="flex-1 px-6 pt-4">
                 <View className="flex-row items-center mb-6">
                     <Pressable onPress={() => setSetupMode(false)} className="mr-4">
-                        <IconSymbol name="chevron.left" size={24} color="#6366f1" />
+                        <IconSymbol library={MaterialIcons} name="chevron-left" size={24} color="#6366f1" />
                     </Pressable>
                     <ThemedText type="subtitle">Configure Devices</ThemedText>
                 </View>
@@ -344,7 +359,7 @@ export default function DeviceSetupScreen() {
                     <ThemedText type="defaultSemiBold" className="mb-2">
                         SSID
                     </ThemedText>
-                    <View className="flex-row items-center mb-4">
+                    <View className="flex-row items-center mb-2">
                         <ThemedTextInput
                             className="flex-1 mb-0"
                             placeholder="Enter SSID"
@@ -353,9 +368,9 @@ export default function DeviceSetupScreen() {
                         />
                         <Button className="ml-2 px-3 h-12" onclick={handleScanNetworks}>
                             {isScanningNetworks ? (
-                                <IconSymbol name="refresh" size={20} color="#6366f1" />
+                                <IconSymbol library={MaterialIcons} name="refresh" size={20} color="#6366f1" />
                             ) : (
-                                <IconSymbol name="wifi" size={20} />
+                                <IconSymbol library={MaterialIcons} name="wifi" size={20} />
                             )}
                         </Button>
                     </View>
@@ -373,7 +388,7 @@ export default function DeviceSetupScreen() {
                                         className="p-3 border-b border-white/5 flex-row justify-between items-center"
                                     >
                                         <ThemedText>{net.SSID}</ThemedText>
-                                        <IconSymbol name="wifi" size={16} color="#4ade80" />
+                                        <IconSymbol library={MaterialIcons} name="wifi" size={16} color="#4ade80" />
                                     </Pressable>
                                 ))}
                             </ScrollView>
@@ -396,7 +411,7 @@ export default function DeviceSetupScreen() {
                     <ThemedText type="subtitle" className="mb-4">
                         Device Hotspots
                     </ThemedText>
-                    <ThemedText className="mb-4 text-gray-400">Enter passwords for the device hotspots (if any).</ThemedText>
+                    <ThemedText className="mb-4 text-gray-400">Enter passwords for the device hotspots.</ThemedText>
 
                     {devices
                         .filter((d) => selectedDevices[d.BSSID])
@@ -407,13 +422,13 @@ export default function DeviceSetupScreen() {
                                     <View className="flex-row justify-between items-center mb-2">
                                         <ThemedText type="defaultSemiBold">{device.SSID}</ThemedText>
                                         {setupStatus[device.BSSID] === "success" && (
-                                            <IconSymbol name="checkmark.circle.fill" size={20} color="#4ade80" />
+                                            <IconSymbol library={MaterialIcons} name="check-circle" size={20} color="#4ade80" />
                                         )}
                                         {setupStatus[device.BSSID] === "error" && (
-                                            <IconSymbol name="exclamationmark.triangle.fill" size={20} color="#ef4444" />
+                                            <IconSymbol library={MaterialIcons} name="warning" size={20} color="#ef4444" />
                                         )}
                                         {setupStatus[device.BSSID] === "connecting" && (
-                                            <IconSymbol name="arrow.triangle.2.circlepath" size={20} color="#6366f1" />
+                                            <IconSymbol library={MaterialIcons} name="sync" size={20} color="#6366f1" />
                                         )}
                                     </View>
                                     {isProtected ? (
@@ -466,7 +481,7 @@ export default function DeviceSetupScreen() {
                         Device ID (DNS Name)
                     </ThemedText>
                     <ThemedTextInput
-                        placeholder="e.g. SwitchTogglerDevice-abcdef"
+                        placeholder="e.g. switch-toggler-abcdef"
                         value={manualDeviceId}
                         onChangeText={setManualDeviceId}
                         className="mb-4"
@@ -491,16 +506,32 @@ export default function DeviceSetupScreen() {
                     />
                 </ThemedView>
 
-                <ThemedView className="mb-8">
-                    <ThemedText type="subtitle">Setup New Devices</ThemedText>
-                    <ThemedText className="text-gray-400 mt-1">Available Switch Toggler devices nearby</ThemedText>
-                </ThemedView>
+                <View className="flex-row items-center justify-between mb-4">
+                    <View className="flex-1">
+                        <ThemedText type="subtitle">Setup New Devices</ThemedText>
+                        <ThemedText className="text-gray-400 mt-1">Available Switch Toggler devices nearby</ThemedText>
+                    </View>
+                    <View className="flex-row items-center gap-3">
+                        <Pressable
+                            onPress={handleScanDevices}
+                            disabled={isScanning}
+                            className="bg-white/10 p-2 rounded-full border border-white/10"
+                        >
+                            <IconSymbol library={MaterialIcons} name="refresh" size={18} color="#6366f1" />
+                        </Pressable>
+                        {Object.values(selectedDevices).some(Boolean) && (
+                            <Pressable onPress={handleSetup} className="bg-indigo-500 px-4 py-2 rounded-xl">
+                                <ThemedText className="text-white font-bold text-xs">SETUP</ThemedText>
+                            </Pressable>
+                        )}
+                    </View>
+                </View>
 
                 {/* Scan Devices List */}
                 <View className="mb-8">
                     {devices.length === 0 ? (
                         <ThemedView className="items-center justify-center p-10 rounded-3xl bg-white/5 border border-white/10 border-dashed">
-                            <IconSymbol name="bluetooth" size={48} color="#4b5563" />
+                            <IconSymbol library={MaterialIcons} name="bluetooth" size={48} color="#4b5563" />
                             <ThemedText className="mt-4 text-center text-gray-500">
                                 {isScanning
                                     ? "Looking for devices..."
@@ -523,21 +554,37 @@ export default function DeviceSetupScreen() {
                                         selectedDevices[item.BSSID] ? "bg-indigo-500 border-indigo-500" : "border-gray-500"
                                     }`}
                                 >
-                                    {selectedDevices[item.BSSID] && <IconSymbol name="checkmark" size={16} color="white" />}
+                                    {selectedDevices[item.BSSID] && (
+                                        <IconSymbol library={MaterialIcons} name="checkmark" size={16} color="white" />
+                                    )}
                                 </View>
                                 <View className="flex-1">
                                     <ThemedText type="defaultSemiBold">{item.SSID}</ThemedText>
                                     <ThemedText className="text-xs text-gray-500">{item.BSSID}</ThemedText>
                                 </View>
-                                <IconSymbol name="wifi" size={20} color={item.level > -60 ? "#4ade80" : "#facc15"} />
+                                <IconSymbol
+                                    library={MaterialIcons}
+                                    name="wifi"
+                                    size={20}
+                                    color={item.level > -60 ? "#4ade80" : "#facc15"}
+                                />
                             </Pressable>
                         ))
                     )}
                 </View>
 
-                <View className="mb-4 mt-4">
-                    <ThemedText type="subtitle">Setted Up Devices</ThemedText>
-                    <ThemedText className="text-gray-400 mt-1">Devices already managed by you</ThemedText>
+                <View className="flex-row items-center justify-between mb-4 mt-8">
+                    <View className="flex-1">
+                        <ThemedText type="subtitle">Setted Up Devices</ThemedText>
+                        <ThemedText className="text-gray-400 mt-1">Devices already managed by you</ThemedText>
+                    </View>
+                    <Pressable
+                        onPress={fetchSettedUpDevices}
+                        disabled={isLoadingSettedUp}
+                        className="bg-white/10 p-2 rounded-full border border-white/10"
+                    >
+                        <IconSymbol library={MaterialIcons} name="refresh" size={18} color="#6366f1" />
+                    </Pressable>
                 </View>
 
                 {/* Setted Up Devices List */}
@@ -554,7 +601,7 @@ export default function DeviceSetupScreen() {
                                   className="flex-row items-center p-5 mb-3 rounded-2xl bg-white/5 border border-white/10"
                               >
                                   <View className="w-10 h-10 rounded-full bg-indigo-500/20 items-center justify-center mr-4">
-                                      <IconSymbol name="cpu" size={20} color="#6366f1" />
+                                      <IconSymbol library={Feather} name="cpu" size={20} color="#6366f1" />
                                   </View>
                                   <View className="flex-1">
                                       <ThemedText type="defaultSemiBold">{item.displayName || item.name}</ThemedText>
@@ -575,27 +622,12 @@ export default function DeviceSetupScreen() {
                                       }}
                                       className="p-2"
                                   >
-                                      <IconSymbol name="ellipsis" size={20} color="#4b5563" />
+                                      <IconSymbol library={Ionicons} name="ellipsis-vertical" size={20} color="#4b5563" />
                                   </Pressable>
                               </View>
                           ))}
                 </View>
             </ScrollView>
-
-            <View className="absolute bottom-10 left-6 right-6 gap-3">
-                <Button onclick={handleScanDevices} disabled={isScanning}>
-                    <IconSymbol name="arrow.clockwise" size={18} color="#6366f1" />
-                    <ThemedText className="ml-2 text-indigo-500">{isScanning ? "Scanning..." : "Scan for Devices"}</ThemedText>
-                </Button>
-
-                {Object.values(selectedDevices).some(Boolean) && (
-                    <Button
-                        variant="cta"
-                        label={`Setup ${Object.values(selectedDevices).filter(Boolean).length} Selected`}
-                        onclick={handleSetup}
-                    />
-                )}
-            </View>
         </ThemedSafeAreaView>
     );
 }

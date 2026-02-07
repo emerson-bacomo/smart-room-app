@@ -1,19 +1,5 @@
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import AntDesign from "@expo/vector-icons/AntDesign";
-import Entypo from "@expo/vector-icons/Entypo";
-import EvilIcons from "@expo/vector-icons/EvilIcons";
-import Feather from "@expo/vector-icons/Feather";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import Fontisto from "@expo/vector-icons/Fontisto";
-import Foundation from "@expo/vector-icons/Foundation";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import Octicons from "@expo/vector-icons/Octicons";
-import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import Zocial from "@expo/vector-icons/Zocial";
 import { SymbolView, SymbolWeight } from "expo-symbols";
 import { cssInterop } from "nativewind";
 import React, { useState } from "react";
@@ -21,34 +7,14 @@ import { OpaqueColorValue, Platform, type StyleProp, type TextStyle, View } from
 
 // https://icons.expo.fyi/Index
 
-const ICON_LIBRARIES = {
-    MaterialIcons,
-    Ionicons,
-    FontAwesome,
-    FontAwesome5,
-    FontAwesome6,
-    MaterialCommunityIcons,
-    Feather,
-    Octicons,
-    AntDesign,
-    Entypo,
-    EvilIcons,
-    Fontisto,
-    Foundation,
-    SimpleLineIcons,
-    Zocial,
-};
-
-// Register each library with NativeWind to support className (specifically for text-color)
-Object.values(ICON_LIBRARIES).forEach((lib) => {
-    cssInterop(lib, {
-        className: {
-            target: "style",
-            nativeStyleToProp: {
-                color: true,
-            },
+// Register MaterialIcons (fallback) with NativeWind to support className (specifically for text-color)
+cssInterop(MaterialIcons, {
+    className: {
+        target: "style",
+        nativeStyleToProp: {
+            color: true,
         },
-    });
+    },
 });
 
 cssInterop(SymbolView, {
@@ -60,14 +26,12 @@ cssInterop(SymbolView, {
     },
 });
 
-export type IconLibraryName = keyof typeof ICON_LIBRARIES;
-
 interface IconSymbolProps {
     name: string;
     size?: number;
     color?: string | OpaqueColorValue;
     style?: StyleProp<TextStyle>;
-    library?: IconLibraryName;
+    library?: any;
     weight?: SymbolWeight;
     className?: string;
 }
@@ -128,40 +92,30 @@ function renderVectorIcon(
     name: string,
     size: number,
     color: string | OpaqueColorValue,
-    library?: IconLibraryName,
+    library?: any,
     style?: StyleProp<TextStyle>,
     className?: string,
 ) {
-    let SelectedLibrary = library ? ICON_LIBRARIES[library] : null;
+    const SelectedLibrary = library || MaterialIcons;
 
-    if (!SelectedLibrary) {
-        // Mapping for common SF Symbol names to Vector Icons fallback
-        const mapping: Record<string, { lib: IconLibraryName; name: string }> = {
-            "video.fill": { lib: "MaterialIcons", name: "videocam" },
-            "switch.2": { lib: "MaterialCommunityIcons", name: "unfold-more-horizontal" },
-            "chevron.left": { lib: "MaterialIcons", name: "chevron-left" },
-            "chevron.right": { lib: "MaterialIcons", name: "chevron-right" },
-            "chevron.up": { lib: "MaterialIcons", name: "expand-less" },
-            "chevron.down": { lib: "MaterialIcons", name: "expand-more" },
-            "xmark.circle.fill": { lib: "MaterialIcons", name: "cancel" },
+    // Mapping for common SF Symbol names to Vector Icons fallback when no library is provided
+    if (!library) {
+        const mapping: Record<string, { name: string }> = {
+            "video.fill": { name: "videocam" },
+            "switch.2": { name: "unfold-more-horizontal" },
+            "chevron.left": { name: "chevron-left" },
+            "chevron.right": { name: "chevron-right" },
+            "chevron.up": { name: "expand-less" },
+            "chevron.down": { name: "expand-more" },
+            "xmark.circle.fill": { name: "cancel" },
         };
 
         if (mapping[name]) {
-            const mapped = mapping[name];
-            const Lib = ICON_LIBRARIES[mapped.lib];
-            return <Lib name={mapped.name as any} size={size} color={color} style={style} className={className} />;
-        }
-
-        // Search in libraries
-        for (const libName of Object.keys(ICON_LIBRARIES) as IconLibraryName[]) {
-            const lib = ICON_LIBRARIES[libName];
-            if ((lib as any).glyphMap && name in (lib as any).glyphMap) {
-                SelectedLibrary = lib;
-                break;
-            }
+            return (
+                <MaterialIcons name={mapping[name].name as any} size={size} color={color} style={style} className={className} />
+            );
         }
     }
 
-    const FinalLibrary = SelectedLibrary || MaterialIcons;
-    return <FinalLibrary name={name as any} size={size} color={color} style={style} className={className} />;
+    return <SelectedLibrary name={name as any} size={size} color={color} style={style} className={className} />;
 }

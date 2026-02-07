@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Buffer } from "buffer";
-import process from "process";
 import mqtt from "mqtt";
+import process from "process";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+const { MQTT_URL } = Constants.expoConfig?.extra || {};
 
 // Polyfills for MQTT.js in React Native/Expo
 // @ts-ignore
@@ -14,155 +16,146 @@ if (typeof global.process === "undefined") {
 }
 
 import { useAuth } from "@/hooks/use-auth";
+import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
-import { refreshAccessToken } from "@/utilities/token-refresh";
 
-type MqttStatus = "online" | "offline" | "unknown";
+interface DeviceDataValue {
+    status?: string;
+    motion?: any;
+    [key: string]: any; // Allow any sensor data
+}
 
 interface MqttContextType {
     connected: boolean;
-    deviceStatuses: Record<string, MqttStatus>;
-    publishCommand: (deviceId: string, command: object) => void;
-    subscribeToDevice: (deviceId: string) => void;
-    connectToDevice: (deviceDnsName: string) => Promise<void>;
+    deviceData: Record<string, DeviceDataValue>;
+    subscribe: (deviceId: string) => void;
+    unsubscribe: (deviceId: string) => void;
+    subscribeToDevices: (deviceIds: string[]) => void;
+    unsubscribeFromDevices: (deviceIds: string[]) => void;
+    sendCommand: (deviceId: string, command: object) => void;
 }
 
 const MqttContext = createContext<MqttContextType | undefined>(undefined);
 
 export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [clients, setClients] = useState<Record<string, mqtt.MqttClient>>({});
+    const [client, setClient] = useState<mqtt.MqttClient | null>(null);
     const [connected, setConnected] = useState(false);
-    const [deviceStatuses, setDeviceStatuses] = useState<Record<string, MqttStatus>>({});
+    const [deviceData, setDeviceData] = useState<Record<string, DeviceDataValue>>({});
     const { user } = useAuth();
 
-    // Connect to a specific device
-    const connectToDevice = useCallback(
-        async (deviceDnsName: string) => {
-            if (clients[deviceDnsName]) return; // Already connected
+    console.log(connected, deviceData);
 
-            const token = await SecureStore.getItemAsync("accessToken");
-            if (!token) {
-                console.warn("No access token available for MQTT connection");
-                return;
+    const connect = useCallback(async () => {
+        if (client?.connected) return;
+        console.log("Connecting to MQTT...");
+
+        const token = await SecureStore.getItemAsync("accessToken");
+        if (!token) return;
+
+        // Use a generic Admin/User clientId since the specific device check
+        // happens at the subscription level now.
+        const options: mqtt.IClientOptions = {
+            clientId: `user_${user?.id}_${Math.random().toString(16).slice(2, 6)}`,
+            username: "mobile_app",
+            password: token, // JWT used for Prisma ownership checks later
+            clean: true,
+            reconnectPeriod: 2000,
+        };
+
+        const mqttClient = mqtt.connect(MQTT_URL, options);
+
+        mqttClient.on("error", (err) => {
+            console.error("MQTT Error:", err);
+            setConnected(false);
+        });
+
+        mqttClient.on("connect", () => setConnected(true));
+        mqttClient.on("message", (topic, message) => {
+            const parts = topic.split("/"); // devices/{id}/status or devices/{id}/sensors/{type}
+            const deviceId = parts[1];
+            console.log(message.toString());
+
+            if (parts[2] === "status") {
+                // Update device status
+                const messageStr = message.toString();
+                // Try parsing as JSON first
+                const payload = JSON.parse(messageStr);
+                setDeviceData((prev) => ({
+                    ...prev,
+                    [deviceId]: { ...prev[deviceId], ...payload },
+                }));
             }
+        });
 
-            const brokerUrl = "ws://YOUR_BACKEND_IP:8888";
-            const options: mqtt.IClientOptions = {
-                clientId: `smart_room_mob_${deviceDnsName}_` + Math.random().toString(16).substring(2, 10),
-                username: deviceDnsName, // Send DNS name as username
-                password: token, // Send JWT as password
-                clean: true,
-                connectTimeout: 4000,
-                reconnectPeriod: 1000,
-            };
+        mqttClient.on("close", () => setConnected(false));
+        setClient(mqttClient);
+    }, [user, client]);
 
-            console.log(`Connecting to MQTT broker for device ${deviceDnsName}...`, brokerUrl);
-            const mqttClient = mqtt.connect(brokerUrl, options);
-
-            mqttClient.on("connect", () => {
-                setConnected(true);
-                console.log(`MQTT Connected for device ${deviceDnsName}`);
-                mqttClient.subscribe(`devices/${deviceDnsName}/status`);
-            });
-
-            mqttClient.on("message", (topic, message) => {
-                const topicParts = topic.split("/");
-                if (topicParts[0] === "devices" && topicParts[2] === "status") {
-                    const deviceId = topicParts[1];
-                    const status = message.toString() as MqttStatus;
-                    setDeviceStatuses((prev) => ({ ...prev, [deviceId]: status }));
-                }
-            });
-
-            mqttClient.on("error", (err) => {
-                console.error(`MQTT Client Error for ${deviceDnsName}:`, err);
-
-                // Check if it's an authentication error (token expired)
-                const errorMsg = err.message || err.toString();
-                if (errorMsg.includes("Not authorized") || errorMsg.includes("Connection refused")) {
-                    console.log(`Auth error detected for ${deviceDnsName}, refreshing token and reconnecting...`);
-
-                    // Close the current connection
-                    mqttClient.end(true);
-
-                    // Remove from clients map
-                    setClients((prev) => {
-                        const newClients = { ...prev };
-                        delete newClients[deviceDnsName];
-                        return newClients;
-                    });
-
-                    // Refresh token and reconnect
-                    refreshAccessToken().then((freshToken) => {
-                        if (freshToken) {
-                            console.log(`Token refreshed, reconnecting to ${deviceDnsName}...`);
-                            connectToDevice(deviceDnsName);
-                        }
-                        // If refresh fails, refreshAccessToken already redirects to login
-                    });
-                }
-            });
-
-            mqttClient.on("close", () => {
-                console.log(`MQTT Connection Closed for ${deviceDnsName}`);
-                setClients((prev) => {
-                    const newClients = { ...prev };
-                    delete newClients[deviceDnsName];
-                    return newClients;
-                });
-            });
-
-            setClients((prev) => ({ ...prev, [deviceDnsName]: mqttClient }));
+    const subscribe = useCallback(
+        (deviceId: string) => {
+            if (client?.connected) client.subscribe(`devices/${deviceId}/status`);
         },
-        [clients],
+        [client],
+    );
+
+    const unsubscribe = useCallback(
+        (deviceId: string) => {
+            if (client?.connected) {
+                client.unsubscribe(`devices/${deviceId}/status`);
+            }
+        },
+        [client],
+    );
+
+    const subscribeToDevices = useCallback(
+        (deviceIds: string[]) => {
+            if (client?.connected) {
+                deviceIds.forEach((deviceId) => {
+                    client.subscribe(`devices/${deviceId}/status`);
+                });
+            }
+        },
+        [client],
+    );
+
+    const unsubscribeFromDevices = useCallback(
+        (deviceIds: string[]) => {
+            if (client?.connected) {
+                deviceIds.forEach((deviceId) => {
+                    client.unsubscribe(`devices/${deviceId}/status`);
+                });
+            }
+        },
+        [client],
+    );
+
+    const sendCommand = useCallback(
+        (deviceId: string, cmd: object) => {
+            if (client?.connected) {
+                client.publish(`devices/${deviceId}/cmd`, JSON.stringify(cmd));
+            }
+        },
+        [client],
     );
 
     useEffect(() => {
-        if (!user) return;
-
-        // Cleanup on unmount
+        if (user) connect();
         return () => {
-            Object.values(clients).forEach((client) => {
-                client.end();
-            });
+            client?.end();
         };
-    }, [user, clients]);
-
-    const publishCommand = useCallback(
-        (deviceId: string, command: object) => {
-            const client = clients[deviceId];
-            if (client && client.connected) {
-                const topic = `devices/${deviceId}/cmd`;
-                const payload = JSON.stringify(command);
-                client.publish(topic, payload, { qos: 1 }, (err) => {
-                    if (err) console.error("Publish error:", err);
-                });
-            } else {
-                console.warn(`Cannot publish: MQTT client for ${deviceId} not connected`);
-            }
-        },
-        [clients],
-    );
-
-    const subscribeToDevice = useCallback(
-        (deviceId: string) => {
-            const client = clients[deviceId];
-            if (client) {
-                client.subscribe(`devices/${deviceId}/status`);
-            }
-        },
-        [clients],
-    );
+    }, [user]);
 
     const value = useMemo(
         () => ({
             connected,
-            deviceStatuses,
-            publishCommand,
-            subscribeToDevice,
-            connectToDevice,
+            deviceData,
+            subscribe,
+            unsubscribe,
+            subscribeToDevices,
+            unsubscribeFromDevices,
+            sendCommand,
         }),
-        [connected, deviceStatuses, publishCommand, subscribeToDevice, connectToDevice],
+        [connected, deviceData, subscribe, unsubscribe, subscribeToDevices, unsubscribeFromDevices, sendCommand],
     );
 
     return <MqttContext.Provider value={value}>{children}</MqttContext.Provider>;

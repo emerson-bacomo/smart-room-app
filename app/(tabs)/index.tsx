@@ -8,6 +8,7 @@ import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useRef, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
@@ -81,10 +82,17 @@ export default function RoomsScreen() {
 
             <Button
                 variant="cta"
-                className="absolute bottom-8 right-8 h-14 w-14 rounded-full shadow-lg"
+                className="absolute bottom-8 right-8 h-14 w-14 rounded-full"
+                style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4.65,
+                    elevation: 8,
+                }}
                 onclick={() => createRoomModalRef.current?.open()}
             >
-                <IconSymbol name="add" size={20} />
+                <IconSymbol library={MaterialIcons} name="add" size={20} />
             </Button>
 
             <AppModal

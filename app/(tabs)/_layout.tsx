@@ -7,6 +7,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 export default function TabLayout() {
     const colorScheme = useColorScheme();
@@ -31,14 +32,14 @@ export default function TabLayout() {
                 name="index"
                 options={{
                     title: "Home",
-                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="home" color={color} />,
+                    tabBarIcon: ({ color }) => <IconSymbol library={MaterialIcons} size={28} name="home" color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="device-setup"
                 options={{
                     title: "Device Setup",
-                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="home" color={color} />,
+                    tabBarIcon: ({ color }) => <IconSymbol library={MaterialIcons} size={28} name="home" color={color} />,
                 }}
             />
             <Tabs.Screen
@@ -49,7 +50,7 @@ export default function TabLayout() {
                         user?.avatar ? (
                             <Image source={{ uri: user.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} />
                         ) : (
-                            <IconSymbol size={28} name="person" color={color} />
+                            <IconSymbol library={MaterialIcons} size={28} name="person" color={color} />
                         ),
                 }}
             />
