@@ -4,8 +4,12 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 export function useThemeColor(
     colorNames: keyof typeof Colors.light | (keyof typeof Colors.light)[],
     styleKey?: string,
+    opposite?: boolean,
 ): Record<string, any> {
-    const theme = useColorScheme() ?? "light";
+    let theme = useColorScheme() ?? "light";
+    if (opposite) {
+        theme = theme === "light" ? "dark" : "light";
+    }
 
     const themeConfig = Colors[theme];
 

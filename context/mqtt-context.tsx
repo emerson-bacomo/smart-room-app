@@ -1,7 +1,7 @@
 import { Buffer } from "buffer";
 import mqtt from "mqtt";
 import process from "process";
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 const { MQTT_URL } = Constants.expoConfig?.extra || {};
 
@@ -15,19 +15,15 @@ if (typeof global.process === "undefined") {
     global.process = process;
 }
 
+import { SwitchDevice } from "@/components/room/switch-list";
 import { useAuth } from "@/hooks/use-auth";
+import { refreshAccessToken } from "@/utilities/token-refresh";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
-interface DeviceDataValue {
-    status?: string;
-    motion?: any;
-    [key: string]: any; // Allow any sensor data
-}
-
 interface MqttContextType {
     connected: boolean;
-    deviceData: Record<string, DeviceDataValue>;
+    deviceData: Record<string, SwitchDevice>;
     subscribe: (deviceId: string) => void;
     unsubscribe: (deviceId: string) => void;
     subscribeToDevices: (deviceIds: string[]) => void;
@@ -40,8 +36,9 @@ const MqttContext = createContext<MqttContextType | undefined>(undefined);
 export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [client, setClient] = useState<mqtt.MqttClient | null>(null);
     const [connected, setConnected] = useState(false);
-    const [deviceData, setDeviceData] = useState<Record<string, DeviceDataValue>>({});
+    const [deviceData, setDeviceData] = useState<Record<string, SwitchDevice>>({});
     const { user } = useAuth();
+    const isRefreshing = useRef(false);
 
     console.log(connected, deviceData);
 
@@ -64,9 +61,34 @@ export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const mqttClient = mqtt.connect(MQTT_URL, options);
 
-        mqttClient.on("error", (err) => {
+        mqttClient.on("error", async (err) => {
             console.error("MQTT Error:", err);
             setConnected(false);
+
+            // Check if it's an authentication error (token expired)
+            const errorMsg = err.message || err.toString();
+            const isAuthError = errorMsg.includes("Not authorized") || errorMsg.includes("Connection refused");
+
+            if (isAuthError && !isRefreshing.current) {
+                isRefreshing.current = true;
+                console.log(`Auth error detected, refreshing token and reconnecting...`);
+
+                // Close the current connection
+                mqttClient.end(true);
+
+                try {
+                    // Refresh token and reconnect
+                    const freshToken = await refreshAccessToken();
+                    if (freshToken) {
+                        console.log(`Token refreshed, triggering reconnection...`);
+                        await connect();
+                    }
+                } catch (refreshErr) {
+                    console.error("Failed to refresh token during MQTT error handling:", refreshErr);
+                } finally {
+                    isRefreshing.current = false;
+                }
+            }
         });
 
         mqttClient.on("connect", () => setConnected(true));

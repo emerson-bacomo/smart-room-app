@@ -47,13 +47,6 @@ export interface ButtonProps extends React.PropsWithChildren<VariantProps<typeof
     toggleValue?: boolean;
 }
 
-const scaleMap = {
-    normal: 1,
-    104: 1.04,
-    big: 1.05,
-    bigger: 1.1,
-};
-
 export const Button: React.FC<ButtonProps> = ({
     icon,
     label,
@@ -63,7 +56,6 @@ export const Button: React.FC<ButtonProps> = ({
     hoverScale,
     height,
     onclick,
-    style,
     labelStyle,
     className,
     labelClassName,
@@ -81,14 +73,11 @@ export const Button: React.FC<ButtonProps> = ({
         <Pressable
             className={twMerge(
                 buttonCVA({ layout, variant, hoverScale, height }),
-                toggleValue && toggleColorClassName && toggleColorClassName,
+                toggleValue && toggleColorClassName,
                 className,
             )}
             disabled={isLoading}
             onPress={handlePress}
-            style={({ pressed }) => ({
-                transform: [{ scale: pressed ? scaleMap[hoverScale ?? "normal"] : 1 }],
-            })}
             {...props}
         >
             {icon && <View className={twMerge(label && "mr-2")}>{icon}</View>}
