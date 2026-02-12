@@ -1,7 +1,7 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { formatTimeAgo } from "@/utilities/time";
+import { RelativeTimer } from "@/components/ui/relative-timer";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import React from "react";
@@ -32,8 +32,10 @@ export function SensorList({ room, mergedDeviceData, onSensorClick }: SensorList
                     const humidity = sensorData?.humidity;
 
                     return (
-                        <ThemedView className="mb-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                            <ThemedText className="text-gray-400 text-xs px-2 mb-2 uppercase font-bold">{item.name}</ThemedText>
+                        <ThemedView className="mb-4 rounded-xl p-4" bordered>
+                            <ThemedText className="text-xs px-2 mb-2 uppercase font-bold" style={{ opacity: 0.5 }}>
+                                {item.name}
+                            </ThemedText>
 
                             {/* Motion Sensor */}
                             {motionValue !== undefined && (
@@ -52,9 +54,10 @@ export function SensorList({ room, mergedDeviceData, onSensorClick }: SensorList
                                             <ThemedText className={motionDetected ? "text-green-500 font-bold" : "text-gray-500"}>
                                                 {motionDetected ? "DETECTED" : "Clear"}
                                             </ThemedText>
-                                            <ThemedText style={{ opacity: 0.5, width: 70, textAlign: "right" }}>
-                                                {formatTimeAgo(sensorData?.motionTimestamp)}
-                                            </ThemedText>
+                                            <RelativeTimer
+                                                timestamp={sensorData?.motionTimestamp}
+                                                className="opacity-50 w-[70px] text-right"
+                                            />
                                         </ThemedView>
                                     </ThemedView>
                                 </Pressable>
@@ -77,9 +80,10 @@ export function SensorList({ room, mergedDeviceData, onSensorClick }: SensorList
                                             <ThemedText className="text-orange-600 font-bold">
                                                 {temperature.toFixed(1)}°C
                                             </ThemedText>
-                                            <ThemedText style={{ opacity: 0.5, width: 70, textAlign: "right" }}>
-                                                {formatTimeAgo(sensorData?.tempTimestamp)}
-                                            </ThemedText>
+                                            <RelativeTimer
+                                                timestamp={sensorData?.tempTimestamp}
+                                                style={{ opacity: 0.5, width: 70, textAlign: "right" }}
+                                            />
                                         </ThemedView>
                                     </ThemedView>
                                 </Pressable>
@@ -95,9 +99,10 @@ export function SensorList({ room, mergedDeviceData, onSensorClick }: SensorList
                                         </ThemedView>
                                         <ThemedView className="flex-row items-center gap-2">
                                             <ThemedText className="text-blue-600 font-bold">{humidity.toFixed(1)}%</ThemedText>
-                                            <ThemedText style={{ opacity: 0.5, width: 70, textAlign: "right" }}>
-                                                {formatTimeAgo(sensorData?.tempTimestamp)}
-                                            </ThemedText>
+                                            <RelativeTimer
+                                                timestamp={sensorData?.tempTimestamp}
+                                                style={{ opacity: 0.5, width: 70, textAlign: "right" }}
+                                            />
                                         </ThemedView>
                                     </ThemedView>
                                 </Pressable>

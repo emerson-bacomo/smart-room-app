@@ -6,21 +6,29 @@ import "react-native-reanimated";
 import "../global.css";
 
 import { AuthProvider } from "@/context/auth-context";
-import { ThemeProvider as AppThemeProvider } from "@/context/theme-context";
 import { MqttProvider } from "@/context/mqtt-context";
+import { ThemeProvider as AppThemeProvider } from "@/context/theme-context";
+import { ToastProvider } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
+
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
     return (
-        <AppThemeProvider>
-            <AuthProvider>
-                <MqttProvider>
-                    <RootLayoutContent />
-                </MqttProvider>
-            </AuthProvider>
-        </AppThemeProvider>
+        <QueryClientProvider client={queryClient}>
+            <AppThemeProvider>
+                <AuthProvider>
+                    <ToastProvider>
+                        <MqttProvider>
+                            <RootLayoutContent />
+                        </MqttProvider>
+                    </ToastProvider>
+                </AuthProvider>
+            </AppThemeProvider>
+        </QueryClientProvider>
     );
 }
 
@@ -57,7 +65,7 @@ function RootLayoutContent() {
             <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-                <Stack.Screen name="rooms/[id]" />
+                <Stack.Screen name="rooms/[id]" options={{ title: "Room Details" }} />
                 <Stack.Screen name="settings" options={{ title: "Settings" }} />
             </Stack>
             <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />

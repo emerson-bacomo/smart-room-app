@@ -49,7 +49,11 @@ export function DeviceControl({
                 <Button
                     variant="none"
                     layout="plain"
-                    className={`flex-1 p-6 rounded-xl items-center border ${selectedSwitch?.isOn ? "bg-green-100 border-green-200" : "bg-gray-100 border-gray-200"}`}
+                    className="flex-1 p-6 rounded-xl items-center border"
+                    style={{
+                        backgroundColor: selectedSwitch?.isOn ? "#dcfce7" : "#f3f4f6",
+                        borderColor: selectedSwitch?.isOn ? "#bbf7d0" : "#e5e7eb",
+                    }}
                     onclick={() => onToggleSwitch(selectedDevice?.id!, selectedSwitch?.id!, false)}
                 >
                     <ThemedText className={`${selectedSwitch?.isOn ? "text-green-800" : "text-gray-400"} font-bold text-xl`}>
@@ -59,7 +63,11 @@ export function DeviceControl({
                 <Button
                     variant="none"
                     layout="plain"
-                    className={`flex-1 p-6 rounded-xl items-center border ${!selectedSwitch?.isOn ? "bg-red-100 border-red-200" : "bg-gray-100 border-gray-200"}`}
+                    className="flex-1 p-6 rounded-xl items-center border"
+                    style={{
+                        backgroundColor: !selectedSwitch?.isOn ? "#fee2e2" : "#f3f4f6",
+                        borderColor: !selectedSwitch?.isOn ? "#fecaca" : "#e5e7eb",
+                    }}
                     onclick={() => onToggleSwitch(selectedDevice?.id!, selectedSwitch?.id!, true)}
                 >
                     <ThemedText className={`${!selectedSwitch?.isOn ? "text-red-800" : "text-gray-400"} font-bold text-xl`}>
@@ -68,7 +76,7 @@ export function DeviceControl({
                 </Button>
             </ThemedView>
 
-            <ThemedView className="gap-4 bg-gray-100 p-4 rounded-xl mb-6">
+            <ThemedView className="gap-4 p-4 rounded-xl mb-6" bordered>
                 <ThemedView className="flex-row gap-2">
                     <ThemedTextInput
                         className="flex-1 bg-white"

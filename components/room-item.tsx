@@ -3,10 +3,10 @@ import { AppModal, AppModalRef } from "@/components/app-modal";
 import { Button } from "@/components/button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { useToast } from "@/context/toast-context";
 import api from "@/utilities/api";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
-import { Alert } from "react-native";
 import { Menu, MenuItem } from "react-native-material-menu";
 
 interface RoomItemProps {
@@ -17,34 +17,29 @@ interface RoomItemProps {
 export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
     const [menuVisible, setMenuVisible] = useState(false);
     const renameModalRef = useRef<AppModalRef>(null);
+    const deleteModalRef = useRef<AppModalRef>(null);
+    const toast = useToast();
     const router = useRouter();
 
-    const handleDelete = async () => {
-        Alert.alert("Delete Room", `Are you sure you want to delete "${item.name}"?`, [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        await api.delete(`/rooms/${item.id}`);
-                        loadRooms();
-                    } catch (err) {
-                        console.error(err);
-                        Alert.alert("Error", "Failed to delete Room");
-                    }
-                },
-            },
-        ]);
+    const handleDeleteConfirm = async () => {
+        try {
+            await api.delete(`/rooms/${item.id}`);
+            loadRooms();
+            toast.success("Room deleted successfully");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to delete Room");
+        }
     };
 
     const handleRename = async (newName: string) => {
         try {
             await api.put(`/rooms/${item.id}`, { name: newName });
             loadRooms();
+            toast.success("Room renamed successfully");
         } catch (err) {
             console.error(err);
-            Alert.alert("Error", "Failed to rename Room");
+            toast.error("Failed to rename Room");
         }
     };
 
@@ -61,9 +56,7 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
                     })
                 }
             >
-                <ThemedText type="defaultSemiBold" className="text-black">
-                    {item.name}
-                </ThemedText>
+                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
             </Button>
 
             <Menu
@@ -71,7 +64,9 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
                 onRequestClose={() => setMenuVisible(false)}
                 anchor={
                     <Button variant="none" layout="plain" onclick={() => setMenuVisible(true)} className="p-2">
-                        <ThemedText className="text-xl text-gray-600">⋮</ThemedText>
+                        <ThemedText className="text-xl" style={{ opacity: 0.6 }}>
+                            ⋮
+                        </ThemedText>
                     </Button>
                 }
             >
@@ -87,7 +82,7 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
                     textStyle={{ color: "red" }}
                     onPress={() => {
                         setMenuVisible(false);
-                        handleDelete();
+                        deleteModalRef.current?.open();
                     }}
                 >
                     Delete
@@ -101,6 +96,12 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
                 submitLabel="Rename"
                 onSubmit={handleRename}
             />
+
+            <AppModal ref={deleteModalRef} title="Delete Room" footerType="DELETE" onSubmitOverride={handleDeleteConfirm}>
+                <ThemedText className="mb-4 text-center">
+                    Are you sure you want to delete <ThemedText type="defaultSemiBold">"{item.name}"</ThemedText>?
+                </ThemedText>
+            </AppModal>
         </ThemedView>
     );
 };

@@ -1,5 +1,4 @@
 import { AppModal, AppModalRef } from "@/components/app-modal";
-import { Button } from "@/components/button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import React from "react";
@@ -17,7 +16,7 @@ export function SensorHistoryModal({ modalRef, selectedSensor, sensorHistory, lo
         <AppModal
             ref={modalRef}
             title={`${selectedSensor?.type.charAt(0).toUpperCase() + selectedSensor?.type.slice(1)!} History`}
-            hideButtons
+            footerType="CLOSE"
         >
             <ThemedView className="h-96">
                 {loadingHistory ? (
@@ -27,7 +26,7 @@ export function SensorHistoryModal({ modalRef, selectedSensor, sensorHistory, lo
                         data={sensorHistory}
                         keyExtractor={(item, index) => index.toString()}
                         renderItem={({ item }) => (
-                            <ThemedView className="flex-row justify-between py-3 border-b border-gray-100">
+                            <ThemedView className="flex-row justify-between py-3 border-b" style={{ borderColor: "#f3f4f6" }}>
                                 <ThemedText>
                                     {new Date(item.timestamp).toLocaleString(undefined, {
                                         month: "short",
@@ -53,13 +52,6 @@ export function SensorHistoryModal({ modalRef, selectedSensor, sensorHistory, lo
                     />
                 )}
             </ThemedView>
-            <Button
-                label="Close"
-                variant="none"
-                className="bg-gray-200 mt-4"
-                labelClassName="text-black"
-                onclick={() => modalRef.current?.close()}
-            />
         </AppModal>
     );
 }

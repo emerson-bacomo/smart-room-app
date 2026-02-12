@@ -92,8 +92,8 @@ export function SwitchList({ room, flattenedSwitches, mergedDeviceData, onSwitch
                 renderItem={({ item }) => {
                     const device = room.switchDevices.find((d) => d.id === item.deviceId)!;
                     return (
-                        <ThemedView className="mb-4 bg-gray-50 rounded-xl p-2 border border-gray-100">
-                            <ThemedText className="text-gray-400 text-xs px-2 mb-1 uppercase font-bold">
+                        <ThemedView className="mb-4 rounded-xl p-2" bordered>
+                            <ThemedText className="text-xs px-2 mb-1 uppercase font-bold" style={{ opacity: 0.5 }}>
                                 {item.deviceName}
                             </ThemedText>
                             <Button
@@ -106,11 +106,10 @@ export function SwitchList({ room, flattenedSwitches, mergedDeviceData, onSwitch
 
                                 <ThemedView className="flex-row items-center gap-4">
                                     <ThemedText
-                                        className={
-                                            mergedDeviceData[item.deviceId]?.status === "online"
-                                                ? "text-green-500 text-xs"
-                                                : "text-gray-400 text-xs"
-                                        }
+                                        className="text-xs"
+                                        style={{
+                                            color: mergedDeviceData[item.deviceId]?.status === "online" ? "#22c55e" : "#9ca3af",
+                                        }}
                                     >
                                         {mergedDeviceData[item.deviceId]?.status === "online" ? "Online" : "Offline"}
                                     </ThemedText>
@@ -118,7 +117,8 @@ export function SwitchList({ room, flattenedSwitches, mergedDeviceData, onSwitch
                                         variant="none"
                                         layout="plain"
                                         onclick={() => onToggleSwitch(item.deviceId, item.id, item.isOn)}
-                                        className={`w-12 h-7 rounded-full items-start p-1 ${item.isOn ? "bg-blue-500" : "bg-gray-300"}`}
+                                        className={`w-12 h-7 rounded-full items-start p-1 ${item.isOn ? "bg-blue-500" : ""}`}
+                                        style={!item.isOn ? { backgroundColor: "#d1d5db" } : undefined}
                                     >
                                         <ThemedView
                                             className={`w-5 h-5 rounded-full bg-white ${item.isOn ? "self-end" : "self-start"}`}

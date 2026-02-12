@@ -4,51 +4,138 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useToast } from "@/context/toast-context";
+import { useAuth } from "@/hooks/use-auth";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import React from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import WifiManager from "react-native-wifi-reborn";
+import { requestPermissions } from "../../app/(tabs)/device-setup";
 import { WifiNetwork } from "./scan-devices-section";
 
 interface ConfigureDevicesViewProps {
     devices: WifiNetwork[];
     selectedDevices: { [key: string]: boolean };
-    targetSsid: string;
-    setTargetSsid: (val: string) => void;
-    password: string;
-    setPassword: (val: string) => void;
-    availableNetworks: WifiNetwork[];
-    isScanningNetworks: boolean;
-    showNetworkList: boolean;
-    setShowNetworkList: (val: boolean) => void;
-    devicePasswords: { [key: string]: string };
-    setDevicePasswords: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
-    isConnecting: boolean;
-    setupStatus: { [key: string]: "pending" | "connecting" | "success" | "error" };
     onBack: () => void;
-    onScanNetworks: () => void;
-    onConnect: () => void;
 }
 
-export function ConfigureDevicesView({
-    devices,
-    selectedDevices,
-    targetSsid,
-    setTargetSsid,
-    password,
-    setPassword,
-    availableNetworks,
-    isScanningNetworks,
-    showNetworkList,
-    setShowNetworkList,
-    devicePasswords,
-    setDevicePasswords,
-    isConnecting,
-    setupStatus,
-    onBack,
-    onScanNetworks,
-    onConnect,
-}: ConfigureDevicesViewProps) {
+export function ConfigureDevicesView({ devices, selectedDevices, onBack }: ConfigureDevicesViewProps) {
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
+    const toast = useToast();
+
+    const [targetSsid, setTargetSsid] = useState("POCO F7");
+    const [password, setPassword] = useState("00000000");
+    const [availableNetworks, setAvailableNetworks] = useState<WifiNetwork[]>([]);
+    const [isScanningNetworks, setIsScanningNetworks] = useState(false);
+    const [showNetworkList, setShowNetworkList] = useState(false);
+    const [devicePasswords, setDevicePasswords] = useState<{ [key: string]: string }>({});
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [setupStatus, setSetupStatus] = useState<{ [key: string]: "pending" | "connecting" | "success" | "error" }>({});
+
     const selectedList = devices.filter((d) => selectedDevices[d.BSSID]);
+
+    const handleScanNetworks = async () => {
+        setIsScanningNetworks(true);
+
+        if (!WifiManager || !WifiManager.reScanAndLoadWifiList) {
+            toast.info("Wi-Fi scanning is only available in a native build");
+            setIsScanningNetworks(false);
+            return;
+        }
+
+        const hasPermission = await requestPermissions();
+        if (!hasPermission) {
+            toast.error("Cannot scan for networks without location permission");
+            setIsScanningNetworks(false);
+            return;
+        }
+
+        try {
+            const wifiList = await WifiManager.reScanAndLoadWifiList();
+            const networks = wifiList.filter((n) => n.SSID && !n.SSID.startsWith("switch-toggler-"));
+            setAvailableNetworks(networks as unknown as WifiNetwork[]);
+            setShowNetworkList(true);
+
+            if (networks.length === 0) {
+                console.warn("No available Wi-Fi networks found besides setup devices.");
+            }
+        } catch (err) {
+            console.error("Network scan failed:", err);
+            toast.error("Failed to scan for available Wi-Fi networks");
+        } finally {
+            setIsScanningNetworks(false);
+        }
+    };
+
+    const handleConnect = async () => {
+        if (!targetSsid || !password) {
+            toast.info("Please provide both SSID and password");
+            return;
+        }
+
+        if (selectedList.length === 0) {
+            toast.info("Please select at least one device to setup");
+            return;
+        }
+
+        setIsConnecting(true);
+        const newStatus: { [key: string]: "pending" | "connecting" | "success" | "error" } = {};
+        selectedList.forEach((d) => (newStatus[d.BSSID] = "pending"));
+        setSetupStatus(newStatus);
+
+        try {
+            console.log(selectedList);
+            for (const device of selectedList) {
+                setSetupStatus((prev) => ({ ...prev, [device.BSSID]: "connecting" }));
+                console.log(`Connecting to device hotspot: ${device.SSID}`);
+
+                try {
+                    const isProtected = device.capabilities?.includes("WPA") || device.capabilities?.includes("WEP");
+                    const devicePwd = devicePasswords[device.BSSID] || "";
+
+                    if (isProtected && !devicePwd) {
+                        throw new Error(`Password required for ${device.SSID}`);
+                    }
+
+                    // 1. Connect to device hotspot
+                    await WifiManager.connectToProtectedSSID(device.SSID, devicePwd, false, false);
+                    console.log(`Connected to ${device.SSID}. Sending Wi-Fi credentials...`);
+
+                    // Wait for IP
+                    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+                    // 2. Send request to wifisave
+                    // Pass userid so the device can claim itself
+                    const response = await fetch(
+                        `http://${device.SSID}.local/wifisave?s=${encodeURIComponent(targetSsid)}&p=${encodeURIComponent(password)}&userid=${encodeURIComponent(user?.id || "")}`,
+                        { method: "GET" },
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to save Wi-Fi on ${device.SSID}`);
+                    }
+
+                    setSetupStatus((prev) => ({ ...prev, [device.BSSID]: "success" }));
+                } catch (err) {
+                    console.error(`Error provisioning ${device.SSID}:`, err);
+                    setSetupStatus((prev) => ({ ...prev, [device.BSSID]: "error" }));
+                    return;
+                }
+            }
+
+            toast.success("Devices are connecting to the internet and will appear shortly");
+            // We can't immediately fetch setted up devices because we might still be on the hotspot network or just switching back.
+            // But we can try after a delay or just let the user refresh.
+            setTimeout(() => queryClient.invalidateQueries({ queryKey: ["devices"] }), 5000);
+        } catch (err) {
+            console.error("Setup process failed:", err);
+            toast.error("An unexpected error occurred during setup");
+        } finally {
+            setIsConnecting(false);
+        }
+    };
 
     return (
         <ThemedSafeAreaView className="flex-1 px-6 pt-4">
@@ -78,7 +165,7 @@ export function ConfigureDevicesView({
                             value={targetSsid}
                             onChangeText={setTargetSsid}
                         />
-                        <Button className="ml-2 px-3 h-12" onclick={onScanNetworks}>
+                        <Button className="ml-2 px-3 h-12" onclick={handleScanNetworks}>
                             {isScanningNetworks ? (
                                 <IconSymbol library={MaterialIcons} name="refresh" size={20} color="#6366f1" />
                             ) : (
@@ -161,7 +248,7 @@ export function ConfigureDevicesView({
                     <Button
                         variant="cta"
                         label={isConnecting ? "Connecting..." : `Start Setup (${selectedList.length})`}
-                        onclick={onConnect}
+                        onclick={handleConnect}
                         disabled={isConnecting}
                     />
                 </ThemedView>
