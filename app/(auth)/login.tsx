@@ -82,7 +82,6 @@ export default function Login() {
             }
 
             setUser(user);
-            console.log("Logged in user:", user);
         } catch (error) {
             console.error("Backend Error:", error);
             alertAsync("Login Failed", "Could not verify with server.");

@@ -5,9 +5,10 @@ import { ThemedView } from "@/components/themed-view";
 import { useMqtt } from "@/context/mqtt-context";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert } from "react-native";
+import { Alert, TouchableOpacity } from "react-native";
 
 // Components
 import { CameraModals } from "@/components/room/camera-modals";
@@ -16,7 +17,9 @@ import { DeviceControl } from "@/components/room/device-control";
 import { RoomTabs } from "@/components/room/room-tabs";
 import { SensorHistoryModal } from "@/components/room/sensor-history-modal";
 import { SensorList } from "@/components/room/sensor-list";
+import { ShareRoomModal } from "@/components/room/share-room-modal";
 import { RoomDetails, SwitchDevice, SwitchList, SwitchToggle } from "@/components/room/switch-list";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 export default function RoomDetailsScreen() {
     const { id } = useLocalSearchParams();
@@ -36,6 +39,7 @@ export default function RoomDetailsScreen() {
     const [selectedSensor, setSelectedSensor] = useState<{ deviceId: string; type: string } | null>(null);
     const [sensorHistory, setSensorHistory] = useState<{ value: number; timestamp: string }[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
+    const [shareRoomModalVisible, setShareRoomModalVisible] = useState(false);
 
     // Refs
     const cameraGridModalRef = useRef<AppModalRef>(null);
@@ -75,8 +79,6 @@ export default function RoomDetailsScreen() {
                 device.requestTimestamp = roomData.requestTimestamp;
             });
 
-            roomData.cameras = []; // TODO: only temp
-
             setRoom(roomData);
             navigation.setOptions({ title: roomData.name });
             if (roomData.cameras.length > 0 && !selectedCamera) {
@@ -101,25 +103,6 @@ export default function RoomDetailsScreen() {
     }, [room, id, subscribeToDevices, unsubscribeFromDevices]);
 
     // Handlers
-    const handleAddCamera = async (setBtnLoading?: (loading: boolean) => void) => {
-        if (setBtnLoading) setBtnLoading(true);
-        try {
-            await api.post("/cameras", {
-                externalId: newCamId,
-                password: newCamPassword,
-                roomId: id,
-            });
-            addCameraModalRef.current?.close();
-            setNewCamId("");
-            setNewCamPassword("");
-            loadRoom();
-        } catch (error) {
-            console.error(error);
-            Alert.alert("Error", "Failed to link camera. Check ID and Password.");
-        } finally {
-            if (setBtnLoading) setBtnLoading(false);
-        }
-    };
 
     const handleSensorClick = async (deviceId: string, type: string) => {
         setSelectedSensor({ deviceId, type });
@@ -133,6 +116,20 @@ export default function RoomDetailsScreen() {
             Alert.alert("Error", "Failed to fetch sensor history");
         } finally {
             setLoadingHistory(false);
+        }
+    };
+
+    const handleRemoveCamera = async (cameraId: string) => {
+        try {
+            await api.post("/cameras/remove-from-room", { cameraId });
+            loadRoom();
+            if (selectedCamera?.id === cameraId) {
+                setSelectedCamera(null);
+            }
+            Alert.alert("Success", "Camera removed from room.");
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Error", "Failed to remove camera from room.");
         }
     };
 
@@ -185,6 +182,13 @@ export default function RoomDetailsScreen() {
 
     return (
         <ThemedSafeAreaView className="flex-1" edges={["bottom", "left", "right"]}>
+            <ThemedView className="flex-row justify-between items-center px-5 pt-4 pb-2">
+                <ThemedText type="subtitle">{room.name}</ThemedText>
+                <TouchableOpacity onPress={() => setShareRoomModalVisible(true)} className="p-2">
+                    <IconSymbol library={Ionicons} name="share-social-outline" size={24} color="#007AFF" />
+                </TouchableOpacity>
+            </ThemedView>
+
             <CameraSection
                 selectedCamera={selectedCamera}
                 onOpenGrid={() => cameraGridModalRef.current?.open()}
@@ -225,11 +229,9 @@ export default function RoomDetailsScreen() {
                 cameras={room.cameras}
                 selectedCamera={selectedCamera}
                 setSelectedCamera={setSelectedCamera}
-                newCamId={newCamId}
-                setNewCamId={setNewCamId}
-                newCamPassword={newCamPassword}
-                setNewCamPassword={setNewCamPassword}
-                handleAddCamera={handleAddCamera}
+                handleRemoveCamera={handleRemoveCamera}
+                roomId={id as string}
+                onRefresh={loadRoom}
             />
 
             <SensorHistoryModal
@@ -237,6 +239,12 @@ export default function RoomDetailsScreen() {
                 selectedSensor={selectedSensor}
                 sensorHistory={sensorHistory}
                 loadingHistory={loadingHistory}
+            />
+
+            <ShareRoomModal
+                visible={shareRoomModalVisible}
+                onClose={() => setShareRoomModalVisible(false)}
+                roomId={id as string}
             />
         </ThemedSafeAreaView>
     );

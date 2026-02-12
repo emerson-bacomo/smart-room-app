@@ -18,10 +18,11 @@ interface AppModalProps {
     onSubmitOverride?: ButtonProps["onclick"];
     children?: React.ReactNode;
     hideButtons?: boolean;
+    onOpen?: () => void | Promise<void>;
 }
 
 export const AppModal = forwardRef<AppModalRef, AppModalProps>(
-    ({ title, placeholder, submitLabel = "Create", onSubmit, children, onSubmitOverride, hideButtons }, ref) => {
+    ({ title, placeholder, submitLabel = "Create", onSubmit, children, onSubmitOverride, hideButtons, onOpen }, ref) => {
         const [visible, setVisible] = useState(false);
         const [value, setValue] = useState("");
 
@@ -29,6 +30,9 @@ export const AppModal = forwardRef<AppModalRef, AppModalProps>(
             open: (initialValue = "") => {
                 setValue(initialValue);
                 setVisible(true);
+                if (onOpen) {
+                    onOpen();
+                }
             },
             close: () => setVisible(false),
         }));

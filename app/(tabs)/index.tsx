@@ -1,6 +1,7 @@
 import { AppModal, AppModalRef } from "@/components/app-modal";
 import { Button } from "@/components/button";
 import { RoomItem } from "@/components/room-item";
+import { JoinRoomModal } from "@/components/room/share-room-modal";
 import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
@@ -8,6 +9,7 @@ import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useRef, useState } from "react";
@@ -25,6 +27,7 @@ export default function RoomsScreen() {
     const [refreshing, setRefreshing] = useState(false);
 
     const createRoomModalRef = useRef<AppModalRef>(null);
+    const joinRoomModalRef = useRef<AppModalRef>(null);
 
     const loadRooms = useCallback(async () => {
         if (!user) return;
@@ -57,8 +60,15 @@ export default function RoomsScreen() {
 
     return (
         <ThemedSafeAreaView className="flex-1 px-5 pt-4">
-            <ThemedView className="mb-8">
+            <ThemedView className="mb-8 flex-row justify-between items-center">
                 <ThemedText type="subtitle">My Rooms</ThemedText>
+                <Button
+                    variant="none"
+                    className="bg-blue-50 px-3 py-2"
+                    labelClassName="text-blue-500 text-sm"
+                    label="Join Room"
+                    onclick={() => joinRoomModalRef.current?.open()}
+                />
             </ThemedView>
 
             <ThemedTextInput className="mb-10" placeholder="Search Rooms..." value={searchQuery} onChangeText={setSearchQuery} />
@@ -101,6 +111,8 @@ export default function RoomsScreen() {
                 placeholder="Room Name (e.g., Living Room)"
                 onSubmit={handleCreateRoom}
             />
+
+            <JoinRoomModal modalRef={joinRoomModalRef} onJoinSuccess={loadRooms} />
         </ThemedSafeAreaView>
     );
 }

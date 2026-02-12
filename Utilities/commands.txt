@@ -1,0 +1,7 @@
+eas build --profile development --platform android
+eas build --profile preview --platform android
+
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+// Get fingerprints
+./gradlew signingReport
