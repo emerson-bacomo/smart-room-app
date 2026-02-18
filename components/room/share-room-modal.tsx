@@ -12,6 +12,7 @@ import * as Clipboard from "expo-clipboard";
 import React, { useState } from "react";
 import { ActivityIndicator, Modal, Text, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { MiddleEllipsisText } from "../middle-ellipsis-text";
 
 interface ShareRoomModalProps {
     visible: boolean;
@@ -95,6 +96,7 @@ export function JoinRoomModal({ modalRef, onJoinSuccess }: JoinRoomModalProps) {
     const toast = useToast();
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [scanned, setScanned] = useState(false);
+    const [qrData, setQrData] = useState("");
 
     // Request camera permission when modal opens in scan mode
     React.useEffect(() => {
@@ -140,6 +142,7 @@ export function JoinRoomModal({ modalRef, onJoinSuccess }: JoinRoomModalProps) {
     const handleBarCodeScanned = async ({ data }: { data: string }) => {
         if (scanned) return;
         setScanned(true);
+        setQrData(data);
 
         const code = extractCodeFromUrl(data);
         if (!code) {
@@ -219,6 +222,8 @@ export function JoinRoomModal({ modalRef, onJoinSuccess }: JoinRoomModalProps) {
                         barcodeTypes: ["qr"],
                     }}
                 />
+                {qrData && <MiddleEllipsisText text={qrData} />}
+
                 {scanned && (
                     <View className="absolute inset-0 bg-black/50 items-center justify-center">
                         <ActivityIndicator size="large" color="#fff" />
