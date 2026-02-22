@@ -22,11 +22,15 @@ export type SwitchDevice = {
     motion: number | undefined;
     temperature: number | undefined;
     humidity: number | undefined;
+    sound: number | undefined;
+    buzzer: number | undefined;
     motionTimestamp: string | undefined;
     tempTimestamp: string | undefined;
+    soundTimestamp: string | undefined;
     id: string;
     name: string;
     status: string;
+    buzzerThreshold: number;
     toggles: {
         id: string;
         name: string;

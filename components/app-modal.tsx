@@ -73,23 +73,17 @@ export const AppModal = forwardRef<AppModalRef, AppModalProps>(
         return (
             <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
                 <TouchableWithoutFeedback onPress={() => setVisible(false)}>
-                    <View className="flex-1 justify-center bg-black/40 px-6">
+                    <View className="flex-1 justify-center bg-black/60 px-6">
                         <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-                            <ThemedView className="rounded-xl p-6" bordered opposite>
-                                <ThemedText type="subtitle" className="mb-4 text-center">
+                            <ThemedView className="rounded-2xl p-6 shadow-2xl overflow-hidden gap-4" bordered>
+                                <ThemedText type="subtitle" className="text-center">
                                     {title}
                                 </ThemedText>
 
                                 {children ? (
                                     children
                                 ) : (
-                                    <ThemedTextInput
-                                        className="mb-4"
-                                        value={value}
-                                        onChangeText={setValue}
-                                        placeholder={placeholder}
-                                        autoFocus
-                                    />
+                                    <ThemedTextInput value={value} onChangeText={setValue} placeholder={placeholder} autoFocus />
                                 )}
 
                                 {footerType !== "NONE" && (

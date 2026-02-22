@@ -16,11 +16,11 @@ import { ActivityIndicator, TouchableOpacity } from "react-native";
 import { CameraModals } from "@/components/room/camera-modals";
 import { Camera, CameraSection } from "@/components/room/camera-section";
 import { DeviceControl } from "@/components/room/device-control";
+import { DeviceList, RoomDetails, SwitchDevice, SwitchToggle } from "@/components/room/device-list";
 import { RoomTabs } from "@/components/room/room-tabs";
 import { SensorHistoryModal } from "@/components/room/sensor-history-modal";
 import { SensorList } from "@/components/room/sensor-list";
 import { ShareRoomModal } from "@/components/room/share-room-modal";
-import { RoomDetails, SwitchDevice, SwitchList, SwitchToggle } from "@/components/room/switch-list";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
 export default function RoomDetailsScreen() {
@@ -53,12 +53,13 @@ export default function RoomDetailsScreen() {
     const [viewMode, setViewMode] = useState<"list" | "control">("list");
     const [selectedDevice, setSelectedDevice] = useState<SwitchDevice | null>(null);
     const [selectedSwitch, setSelectedSwitch] = useState<SwitchToggle | null>(null);
-    const [activeTab, setActiveTab] = useState<"switches" | "sensors">("switches");
+    const [activeTab, setActiveTab] = useState<"devices" | "sensors">("devices");
     const [xyz, setXyz] = useState({ x: "0", y: "0", z: "0" });
     const [selectedSensor, setSelectedSensor] = useState<{ deviceId: string; type: string } | null>(null);
     const [sensorHistory, setSensorHistory] = useState<{ value: number; timestamp: string }[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [shareRoomModalVisible, setShareRoomModalVisible] = useState(false);
+    const [buzzerThreshold, setBuzzerThreshold] = useState("500");
 
     // Refs
     const cameraGridModalRef = useRef<AppModalRef>(null);
@@ -70,7 +71,14 @@ export default function RoomDetailsScreen() {
 
     useLayoutEffect(() => {
         if (room?.name) {
-            navigation.setOptions({ title: room.name });
+            navigation.setOptions({
+                title: room.name,
+                headerRight: () => (
+                    <TouchableOpacity onPress={() => setShareRoomModalVisible(true)} className="p-2 mr-2">
+                        <IconSymbol library={Ionicons} name="share-social-outline" size={24} />
+                    </TouchableOpacity>
+                ),
+            });
         }
     }, [navigation, room?.name]);
 
@@ -145,6 +153,7 @@ export default function RoomDetailsScreen() {
         setSelectedDevice(device);
         setSelectedSwitch(sw);
         setXyz({ x: sw.x.toString(), y: sw.y.toString(), z: sw.z.toString() });
+        setBuzzerThreshold(device.buzzerThreshold?.toString() || "500");
         setViewMode("control");
     };
 
@@ -170,16 +179,27 @@ export default function RoomDetailsScreen() {
         }
     };
 
-    const flattenedSwitches = useMemo(() => {
-        if (!room) return [];
-        return room.switchDevices.flatMap((device) =>
-            device.toggles.map((sw) => ({
-                ...sw,
-                deviceName: device.name,
-                deviceId: device.id,
-            })),
-        );
-    }, [room]);
+    const handleUpdateThreshold = async () => {
+        if (!selectedDevice) return;
+        try {
+            await api.put(`/devices/${selectedDevice.id}`, {
+                buzzerThreshold: parseFloat(buzzerThreshold),
+            });
+            sendCommand(selectedDevice.id, {
+                type: "SET_THRESHOLD",
+                threshold: parseFloat(buzzerThreshold),
+            });
+            toast.success("Buzzer threshold updated");
+            queryClient.invalidateQueries({ queryKey: ["room", id] });
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update buzzer threshold");
+        }
+    };
+
+    const handleToggleBuzzer = (deviceId: string, currentState: boolean) => {
+        sendCommand(deviceId, { type: "BUZZER", state: currentState ? "OFF" : "ON" });
+    };
 
     return (
         <ThemedSafeAreaView className="flex-1" edges={["bottom", "left", "right"]}>
@@ -201,14 +221,7 @@ export default function RoomDetailsScreen() {
                 }
 
                 return (
-                    <>
-                        <ThemedView className="flex-row justify-between items-center px-5 pt-4 pb-2">
-                            <ThemedText type="subtitle">{room.name}</ThemedText>
-                            <TouchableOpacity onPress={() => setShareRoomModalVisible(true)} className="p-2">
-                                <IconSymbol library={Ionicons} name="share-social-outline" size={24} style={{ opacity: 0.8 }} />
-                            </TouchableOpacity>
-                        </ThemedView>
-
+                    <ThemedView className="flex-1 gap-4 py-4">
                         <CameraSection
                             selectedCamera={selectedCamera}
                             onOpenGrid={() => cameraGridModalRef.current?.open()}
@@ -218,11 +231,10 @@ export default function RoomDetailsScreen() {
                         <ThemedView className="flex-1 p-5">
                             <RoomTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-                            {activeTab === "switches" ? (
+                            {activeTab === "devices" ? (
                                 viewMode === "list" ? (
-                                    <SwitchList
+                                    <DeviceList
                                         room={room}
-                                        flattenedSwitches={flattenedSwitches}
                                         mergedDeviceData={mergedDeviceData}
                                         onSwitchPress={handleSwitchPress}
                                         onToggleSwitch={toggleSwitch}
@@ -236,6 +248,10 @@ export default function RoomDetailsScreen() {
                                         onBack={() => setViewMode("list")}
                                         onToggleSwitch={toggleSwitch}
                                         onCalibration={handleCalibration}
+                                        buzzerThreshold={buzzerThreshold}
+                                        setBuzzerThreshold={setBuzzerThreshold}
+                                        onUpdateThreshold={handleUpdateThreshold}
+                                        onToggleBuzzer={handleToggleBuzzer}
                                     />
                                 )
                             ) : (
@@ -266,7 +282,7 @@ export default function RoomDetailsScreen() {
                             onClose={() => setShareRoomModalVisible(false)}
                             roomId={id as string}
                         />
-                    </>
+                    </ThemedView>
                 );
             })()}
         </ThemedSafeAreaView>

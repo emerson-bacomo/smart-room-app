@@ -11,7 +11,7 @@ import { RtcViewer } from "./rtc-viewer";
 export interface Camera {
     id: string;
     name: string;
-    is_online: boolean;
+    isOnline?: boolean;
 }
 
 interface CameraSectionProps {
@@ -22,27 +22,21 @@ interface CameraSectionProps {
 
 export function CameraSection({ selectedCamera, onOpenGrid, onOpenAdd }: CameraSectionProps) {
     return (
-        <ThemedView className="h-64 bg-black relative">
-            <ThemedView className="px-5 flex-row justify-between items-center mb-4 absolute top-4 left-0 right-0 z-10">
+        <ThemedView className="min-h-72 bg-black relative gap-4">
+            <ThemedView className="px-5 flex-row justify-between items-center">
                 <ThemedText type="subtitle" className="text-white">
-                    Cameras
+                    {selectedCamera ? selectedCamera.name : "Cameras"}
                 </ThemedText>
                 <ThemedView className="flex-row gap-4">
                     <Button
                         onclick={onOpenGrid}
-                        variant="none"
-                        className="p-1.5 rounded-lg border border-gray-500 aspect-square bg-black/50"
-                        labelClassName="text-white font-medium"
+                        variant="outline"
+                        className="p-1.5 rounded-lg aspect-square bg-white/10 dark:bg-black/20"
                     >
                         <IconSymbol library={Ionicons} name="camera-reverse-outline" color="white" />
                     </Button>
-                    <Button
-                        onclick={onOpenAdd}
-                        variant="none"
-                        className="p-2 rounded-lg border border-gray-500 aspect-square bg-black/50"
-                        labelClassName="text-white font-medium"
-                    >
-                        <IconSymbol library={MaterialCommunityIcons} name="video-plus" color="white" />
+                    <Button onclick={onOpenAdd} variant="outline" className="p-1.5 rounded-lg aspect-square">
+                        <IconSymbol library={MaterialCommunityIcons} name="video-plus" color="white" size={24} />
                     </Button>
                 </ThemedView>
             </ThemedView>

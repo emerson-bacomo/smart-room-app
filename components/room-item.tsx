@@ -5,9 +5,11 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useToast } from "@/context/toast-context";
 import api from "@/utilities/api";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Menu, MenuItem } from "react-native-material-menu";
+import { IconSymbol } from "./ui/icon-symbol";
 
 interface RoomItemProps {
     item: Room;
@@ -47,26 +49,23 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
         <ThemedView className="mb-3 flex-row items-center justify-between rounded-lg p-4">
             <Button
                 variant="none"
-                layout="plain"
-                className="flex-1"
+                className="flex-1 justify-start px-3"
                 onclick={() =>
                     router.push({
                         pathname: "/rooms/[id]",
                         params: { id: item.id },
                     })
                 }
-            >
-                <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-            </Button>
+                label={item.name}
+                labelClassName="font-semibold text-lg"
+            />
 
             <Menu
                 visible={menuVisible}
                 onRequestClose={() => setMenuVisible(false)}
                 anchor={
-                    <Button variant="none" layout="plain" onclick={() => setMenuVisible(true)} className="p-2">
-                        <ThemedText className="text-xl" style={{ opacity: 0.6 }}>
-                            ⋮
-                        </ThemedText>
+                    <Button variant="none" onclick={() => setMenuVisible(true)} className="p-2">
+                        <IconSymbol name="ellipsis-vertical-sharp" library={Ionicons} size={16} />
                     </Button>
                 }
             >

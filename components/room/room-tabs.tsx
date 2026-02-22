@@ -4,8 +4,8 @@ import React from "react";
 import { Button } from "../button";
 
 interface RoomTabsProps {
-    activeTab: "switches" | "sensors";
-    setActiveTab: (tab: "switches" | "sensors") => void;
+    activeTab: "devices" | "sensors";
+    setActiveTab: (tab: "devices" | "sensors") => void;
 }
 
 export function RoomTabs({ activeTab, setActiveTab }: RoomTabsProps) {
@@ -23,14 +23,14 @@ export function RoomTabs({ activeTab, setActiveTab }: RoomTabsProps) {
     return (
         <ThemedView className="flex-row mb-4 gap-2">
             <Button
-                label="Switches"
+                label="Devices"
                 variant="none"
-                onclick={() => setActiveTab("switches")}
+                onclick={() => setActiveTab("devices")}
                 className="flex-1"
                 toggleColorClassName="bg-white"
-                toggleValue={activeTab === "switches"}
+                toggleValue={activeTab === "devices"}
                 labelStyle={{
-                    color: activeTab === "switches" ? textOppositeColor : textColor,
+                    color: activeTab === "devices" ? textOppositeColor : textColor,
                 }}
             />
             <Button

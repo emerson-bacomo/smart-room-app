@@ -121,8 +121,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {children}
             {visible && (
                 <Animated.View style={[styles.toastContainer, { transform: [{ translateY }] }]}>
-                    <TouchableOpacity onPress={hide} activeOpacity={0.9}>
-                        <ThemedView className="flex-row items-center p-4 rounded-2xl shadow-lg border" bordered opposite>
+                    <TouchableOpacity onPress={hide} activeOpacity={1}>
+                        <ThemedView className="flex-row items-center p-4 rounded-2xl shadow-lg border" bordered>
                             <IconSymbol library={Ionicons} name={getIcon() as any} size={24} color={getIconColor()} />
                             <ThemedText className="ml-3 font-medium flex-1" numberOfLines={2}>
                                 {message}

@@ -6,7 +6,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import React from "react";
 import { FlatList, Pressable } from "react-native";
-import { RoomDetails, SwitchDevice } from "./switch-list";
+import { RoomDetails, SwitchDevice } from "./device-list";
 
 interface SensorListProps {
     room: RoomDetails;
@@ -30,6 +30,7 @@ export function SensorList({ room, mergedDeviceData, onSensorClick }: SensorList
                     const motionDetected = motionValue === 1; // Calibrate: 1 = detected, 0 = clear
                     const temperature = sensorData?.temperature;
                     const humidity = sensorData?.humidity;
+                    const sound = sensorData?.sound;
 
                     return (
                         <ThemedView className="mb-4 rounded-xl p-4" bordered>
@@ -92,7 +93,7 @@ export function SensorList({ room, mergedDeviceData, onSensorClick }: SensorList
                             {/* Humidity Sensor */}
                             {humidity !== undefined && (
                                 <Pressable onPress={() => onSensorClick(item.id, "humidity")}>
-                                    <ThemedView className="flex-row items-center justify-between px-2">
+                                    <ThemedView className="flex-row items-center justify-between px-2 mb-3">
                                         <ThemedView className="flex-row items-center gap-2">
                                             <IconSymbol library={Ionicons} name="water" size={20} color="#3b82f6" />
                                             <ThemedText className="font-medium">Humidity</ThemedText>
@@ -108,9 +109,31 @@ export function SensorList({ room, mergedDeviceData, onSensorClick }: SensorList
                                 </Pressable>
                             )}
 
-                            {motionValue === undefined && temperature === undefined && humidity === undefined && (
-                                <ThemedText className="text-center text-gray-400 py-4">No sensor data available</ThemedText>
+                            {/* Sound Sensor */}
+                            {sound !== undefined && (
+                                <Pressable onPress={() => onSensorClick(item.id, "sound")}>
+                                    <ThemedView className="flex-row items-center justify-between px-2">
+                                        <ThemedView className="flex-row items-center gap-2">
+                                            <IconSymbol library={Ionicons} name="volume-high" size={20} color="#8b5cf6" />
+                                            <ThemedText className="font-medium">Sound Level</ThemedText>
+                                        </ThemedView>
+                                        <ThemedView className="flex-row items-center gap-2">
+                                            <ThemedText className="text-purple-600 font-bold">{sound.toFixed(0)}</ThemedText>
+                                            <RelativeTimer
+                                                timestamp={sensorData?.soundTimestamp}
+                                                style={{ opacity: 0.5, width: 70, textAlign: "right" }}
+                                            />
+                                        </ThemedView>
+                                    </ThemedView>
+                                </Pressable>
                             )}
+
+                            {motionValue === undefined &&
+                                temperature === undefined &&
+                                humidity === undefined &&
+                                sound === undefined && (
+                                    <ThemedText className="text-center text-gray-400 py-4">No sensor data available</ThemedText>
+                                )}
                         </ThemedView>
                     );
                 }}

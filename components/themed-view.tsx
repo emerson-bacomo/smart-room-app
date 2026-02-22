@@ -9,8 +9,8 @@ export type ThemedViewProps = ViewProps & {
 };
 
 export function ThemedView({ style, bordered, opposite, ...otherProps }: ThemedViewProps) {
-    const { background: backgroundColor, textInputBorder: borderColor } = useThemeColor(
-        ["background", "textInputBorder"],
+    const { backgroundColor, textInputBorder: borderColor } = useThemeColor(
+        ["backgroundColor", "textInputBorder"],
         undefined,
         opposite,
     );

@@ -14,6 +14,10 @@ interface DeviceControlProps {
     onBack: () => void;
     onToggleSwitch: (deviceId: string, switchId: string, currentState: boolean) => void;
     onCalibration: () => void;
+    buzzerThreshold: string;
+    setBuzzerThreshold: (val: string) => void;
+    onUpdateThreshold: () => void;
+    onToggleBuzzer: (deviceId: string, currentState: boolean) => void;
 }
 
 export function DeviceControl({
@@ -24,7 +28,13 @@ export function DeviceControl({
     onBack,
     onToggleSwitch,
     onCalibration,
+    buzzerThreshold,
+    setBuzzerThreshold,
+    onUpdateThreshold,
+    onToggleBuzzer,
 }: DeviceControlProps) {
+    const isBuzzerOn = selectedDevice?.buzzer === 1;
+
     return (
         <ThemedView className="flex-1">
             <Button onclick={onBack} className="flex-row items-center mb-6" variant="none" layout="plain">
@@ -101,6 +111,41 @@ export function DeviceControl({
                     />
                 </ThemedView>
                 <Button label="Update Calibration (.local)" onclick={onCalibration} />
+            </ThemedView>
+
+            <ThemedView className="p-4 rounded-xl mb-6" bordered>
+                <ThemedText type="defaultSemiBold" className="mb-2">
+                    Buzzer Settings
+                </ThemedText>
+                <ThemedView className="flex-row gap-2 mb-2">
+                    <ThemedTextInput
+                        className="flex-1 bg-white"
+                        placeholder="Threshold (e.g. 500)"
+                        value={buzzerThreshold}
+                        onChangeText={setBuzzerThreshold}
+                        keyboardType="numeric"
+                    />
+                    <Button label="Set Threshold" onclick={onUpdateThreshold} />
+                </ThemedView>
+                <ThemedText className="text-xs text-gray-500">
+                    Buzzer activates when sound level exceeds this value. Changes are saved to ESP32.
+                </ThemedText>
+            </ThemedView>
+
+            <ThemedView className="p-4 rounded-xl mb-6" bordered>
+                <ThemedText type="defaultSemiBold" className="mb-2">
+                    Manual Buzzer Control
+                </ThemedText>
+                <Button
+                    variant="none"
+                    layout="plain"
+                    className={`p-4 rounded-xl items-center border ${isBuzzerOn ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200"}`}
+                    onclick={() => onToggleBuzzer(selectedDevice?.id!, isBuzzerOn)}
+                >
+                    <ThemedText className={`${isBuzzerOn ? "text-red-600" : "text-gray-600"} font-bold text-lg`}>
+                        {isBuzzerOn ? "TURN BUZZER OFF" : "TURN BUZZER ON"}
+                    </ThemedText>
+                </Button>
             </ThemedView>
         </ThemedView>
     );

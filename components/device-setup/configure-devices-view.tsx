@@ -9,9 +9,8 @@ import { useAuth } from "@/hooks/use-auth";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { PermissionsAndroid, Platform, Pressable, ScrollView, View } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
-import { requestPermissions } from "../../app/(tabs)/device-setup";
 import { WifiNetwork } from "./scan-devices-section";
 
 interface ConfigureDevicesViewProps {
@@ -19,6 +18,14 @@ interface ConfigureDevicesViewProps {
     selectedDevices: { [key: string]: boolean };
     onBack: () => void;
 }
+
+export const requestPermissions = async () => {
+    if (Platform.OS === "android") {
+        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    return true;
+};
 
 export function ConfigureDevicesView({ devices, selectedDevices, onBack }: ConfigureDevicesViewProps) {
     const { user } = useAuth();

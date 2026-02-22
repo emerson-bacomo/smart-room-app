@@ -10,6 +10,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
@@ -61,22 +62,15 @@ export default function RoomsScreen() {
     const filteredRooms = rooms.filter((room) => room.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return (
-        <ThemedSafeAreaView className="flex-1 px-5 pt-4">
-            <ThemedView className="mb-8 flex-row justify-between items-center">
+        <ThemedSafeAreaView className="flex-1 px-5 pt-4 gap-4">
+            <ThemedView className="flex-row justify-between items-center mb-4">
                 <ThemedText type="subtitle">My Rooms</ThemedText>
-                <Button
-                    variant="none"
-                    className="px-3 py-2 border rounded-lg"
-                    style={{ borderColor: "#0a7ea4" }}
-                    onclick={() => joinRoomModalRef.current?.open()}
-                >
-                    <ThemedText type="link" style={{ fontSize: 14 }}>
-                        Join Room
-                    </ThemedText>
+                <Button variant="none" onclick={() => joinRoomModalRef.current?.open()}>
+                    <IconSymbol name="enter-outline" library={Ionicons} />
                 </Button>
             </ThemedView>
 
-            <ThemedTextInput className="mb-10" placeholder="Search Rooms..." value={searchQuery} onChangeText={setSearchQuery} />
+            <ThemedTextInput placeholder="Search Rooms..." value={searchQuery} onChangeText={setSearchQuery} />
 
             {(() => {
                 if (isLoading && !isRefetching) {

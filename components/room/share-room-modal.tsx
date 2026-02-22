@@ -61,9 +61,7 @@ export function ShareRoomModal({ visible, onClose, roomId }: ShareRoomModalProps
                         {loading ? <ActivityIndicator /> : shareUrl ? <QRCode value={shareUrl} size={200} /> : null}
                     </ThemedView>
 
-                    <ThemedText className="text-xs mb-5" style={{ opacity: 0.6 }} numberOfLines={1}>
-                        {shareUrl}
-                    </ThemedText>
+                    <MiddleEllipsisText textClassName="text-xs mb-5" style={{ opacity: 0.6 }} text={shareUrl} />
 
                     <Button
                         className="w-full"

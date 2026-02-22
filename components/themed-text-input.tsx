@@ -7,8 +7,8 @@ export function ThemedTextInput({ style, placeholderTextColor, ...rest }: TextIn
         text: color,
         textInputBorder: borderColor,
         textInputPlaceholder: placeholderColor,
-        background: backgroundColor,
-    } = useThemeColor(["background", "text", "textInputBorder", "textInputPlaceholder"]);
+        backgroundColor,
+    } = useThemeColor(["backgroundColor", "text", "textInputBorder", "textInputPlaceholder"]);
 
     return (
         <TextInput

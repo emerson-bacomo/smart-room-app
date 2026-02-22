@@ -15,16 +15,14 @@ export function useThemeColor(
 
     // If it's an array, build a style object
     if (Array.isArray(colorNames)) {
-        return colorNames.reduce((acc, key) => {
-            // Logic: if key is 'background', CSS property is 'backgroundColor'
-            const styleKey = key === "background" ? "backgroundColor" : key;
-
-            return {
+        return colorNames.reduce(
+            (acc, key) => ({
                 ...acc,
-                [styleKey]: themeConfig[key as keyof typeof Colors.light],
-            };
-        }, {});
+                [key]: themeConfig[key as keyof typeof Colors.light],
+            }),
+            {},
+        );
     }
 
-    return { [styleKey || "colorName"]: themeConfig[colorNames as keyof typeof Colors.light] };
+    return { [styleKey || colorNames]: themeConfig[colorNames as keyof typeof Colors.light] };
 }

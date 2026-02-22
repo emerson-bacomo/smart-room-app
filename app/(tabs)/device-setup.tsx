@@ -1,22 +1,14 @@
 import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
 import { useToast } from "@/context/toast-context";
 import React, { useState } from "react";
-import { PermissionsAndroid, Platform, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 
 // Components
-import { ConfigureDevicesView } from "@/components/device-setup/configure-devices-view";
+import { ConfigureDevicesView, requestPermissions } from "@/components/device-setup/configure-devices-view";
 import { ManualJoinSection } from "@/components/device-setup/manual-join-section";
 import { ScanDevicesSection, WifiNetwork } from "@/components/device-setup/scan-devices-section";
 import { SettedUpDevicesSection } from "@/components/device-setup/setted-up-devices-section";
-
-export const requestPermissions = async () => {
-    if (Platform.OS === "android") {
-        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-    }
-    return true;
-};
 
 export default function DeviceSetupScreen() {
     const [devices, setDevices] = useState<WifiNetwork[]>([]);
