@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import React, { useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, StyleProp, Text, TextStyle, View, ViewStyle } from "react-native";
 import { twMerge } from "tailwind-merge";
+import { ThemedText } from "./themed-text";
 
 const buttonCVA = cva("relative rounded-lg", {
     variants: {
@@ -10,8 +11,9 @@ const buttonCVA = cva("relative rounded-lg", {
             plain: "",
         },
         variant: {
-            cta: "bg-blue-500",
+            cta: "bg-blue-600",
             outline: "border border-gray-400",
+            "a-bit-white": "bg-white/10 rounded-xl border border-white/10",
             danger: "bg-red-500",
             none: "",
         },
@@ -45,6 +47,7 @@ export interface ButtonProps extends React.PropsWithChildren<VariantProps<typeof
     disabled?: boolean;
     toggleColorClassName?: string;
     toggleValue?: boolean;
+    useThemedText?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -52,7 +55,7 @@ export const Button: React.FC<ButtonProps> = ({
     label,
     children,
     layout,
-    variant,
+    variant = "cta",
     hoverScale,
     height,
     onclick,
@@ -61,6 +64,7 @@ export const Button: React.FC<ButtonProps> = ({
     labelClassName,
     toggleColorClassName = "bg-white/30",
     toggleValue,
+    useThemedText = false,
     ...props
 }) => {
     const [isLoading, setLoading] = useState(false);
@@ -82,11 +86,16 @@ export const Button: React.FC<ButtonProps> = ({
         >
             {icon && <View className={twMerge(label && "mr-2")}>{icon}</View>}
 
-            {label && (
-                <Text style={labelStyle} className={twMerge("text-white", labelClassName)}>
-                    {label}
-                </Text>
-            )}
+            {label &&
+                (useThemedText ? (
+                    <ThemedText style={labelStyle} className={twMerge("text-white", labelClassName)}>
+                        {label}
+                    </ThemedText>
+                ) : (
+                    <Text style={labelStyle} className={twMerge("text-white", labelClassName)}>
+                        {label}
+                    </Text>
+                ))}
 
             {children}
 

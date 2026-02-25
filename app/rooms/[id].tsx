@@ -3,20 +3,20 @@ import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useMqtt } from "@/context/mqtt-context";
-import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, TouchableOpacity } from "react-native";
+import { toast } from "sonner-native";
 
 // Components
 import { CameraModals } from "@/components/room/camera-modals";
 import { Camera, CameraSection } from "@/components/room/camera-section";
 import { DeviceControl } from "@/components/room/device-control";
-import { DeviceList, RoomDetails, SwitchDevice, SwitchToggle } from "@/components/room/device-list";
+import { DeviceList, RoomDetails, SmartRoomDevice } from "@/components/room/device-list";
 import { RoomTabs } from "@/components/room/room-tabs";
 import { SensorHistoryModal } from "@/components/room/sensor-history-modal";
 import { SensorList } from "@/components/room/sensor-list";
@@ -40,7 +40,7 @@ export default function RoomDetailsScreen() {
         queryFn: async ({ signal }) => {
             const res = await api.get(`/rooms/${id}`, { signal });
             const roomData = res.data as RoomDetails;
-            roomData.switchDevices.forEach((device) => {
+            roomData.smartRoomDevices.forEach((device) => {
                 device.requestTimestamp = roomData.requestTimestamp;
             });
             return roomData;
@@ -51,15 +51,13 @@ export default function RoomDetailsScreen() {
     // State
     const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
     const [viewMode, setViewMode] = useState<"list" | "control">("list");
-    const [selectedDevice, setSelectedDevice] = useState<SwitchDevice | null>(null);
-    const [selectedSwitch, setSelectedSwitch] = useState<SwitchToggle | null>(null);
+    const [selectedDevice, setSelectedDevice] = useState<SmartRoomDevice | null>(null);
     const [activeTab, setActiveTab] = useState<"devices" | "sensors">("devices");
-    const [xyz, setXyz] = useState({ x: "0", y: "0", z: "0" });
     const [selectedSensor, setSelectedSensor] = useState<{ deviceId: string; type: string } | null>(null);
     const [sensorHistory, setSensorHistory] = useState<{ value: number; timestamp: string }[]>([]);
-    const [loadingHistory, setLoadingHistory] = useState(false);
     const [shareRoomModalVisible, setShareRoomModalVisible] = useState(false);
     const [buzzerThreshold, setBuzzerThreshold] = useState("500");
+    const [refreshingDevices, setRefreshingDevices] = useState<Record<string, string | undefined>>({});
 
     // Refs
     const cameraGridModalRef = useRef<AppModalRef>(null);
@@ -89,18 +87,16 @@ export default function RoomDetailsScreen() {
     }, [room?.cameras, selectedCamera]);
 
     const mergedDeviceData = useMemo(() => {
-        const merged: Record<string, SwitchDevice> = { ...deviceData };
+        const merged: Record<string, any> = { ...deviceData };
         if (room) {
-            room.switchDevices.forEach((device) => {
+            room.smartRoomDevices.forEach((device) => {
                 const mqttData = deviceData[device.id];
-                const roomTimestamp = room.requestTimestamp ? new Date(room.requestTimestamp).getTime() : 0;
-                const mqttTimestamp = mqttData?.requestTimestamp ? new Date(mqttData.requestTimestamp).getTime() : 0;
 
-                // Priority: Use MQTT data if it's strictly newer than the initial room load
-                if (mqttTimestamp > roomTimestamp && mqttData) {
-                    merged[device.id] = mqttData;
+                // Favor MQTT data if available for this device, otherwise fall back to initial room load.
+                // This prevents flickering when timestamps are slightly discordant due to server/device precision differences.
+                if (mqttData) {
+                    merged[device.id] = { ...device, ...mqttData };
                 } else {
-                    // Otherwise use the data from the room object (which is already flattened)
                     merged[device.id] = device;
                 }
             });
@@ -108,30 +104,69 @@ export default function RoomDetailsScreen() {
         return merged;
     }, [deviceData, room]);
 
+    // Keep a ref of device IDs so useFocusEffect always sees the latest list
+    // without needing room in its dependency array.
+    const deviceIdsRef = useRef<string[]>([]);
     useEffect(() => {
-        if (room && room.switchDevices.length > 0) {
-            const deviceIds = room.switchDevices.map((d) => d.id);
-            subscribeToDevices(deviceIds);
-            return () => unsubscribeFromDevices(deviceIds);
-        }
-    }, [room, id, subscribeToDevices, unsubscribeFromDevices]);
+        if (room) deviceIdsRef.current = room.smartRoomDevices.map((d) => d.id);
+    }, [room]);
 
-    const toast = useToast();
+    // Subscribe when screen comes into focus, unsubscribe on blur/leave.
+    // Stable callbacks from mqtt-context mean this only fires on navigation events.
+    useFocusEffect(
+        useCallback(() => {
+            const ids = deviceIdsRef.current;
+            if (ids.length > 0) subscribeToDevices(ids);
+            return () => {
+                if (deviceIdsRef.current.length > 0) unsubscribeFromDevices(deviceIdsRef.current);
+            };
+        }, [subscribeToDevices, unsubscribeFromDevices]),
+    );
+
+    // Also subscribe when room data arrives (screen may already be focused by then)
+    useEffect(() => {
+        if (room?.smartRoomDevices.length) {
+            subscribeToDevices(room.smartRoomDevices.map((d) => d.id));
+        }
+    }, [room, subscribeToDevices]);
+
+    // Clear loading state when data arrives
+    useEffect(() => {
+        setRefreshingDevices((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            Object.keys(next).forEach((deviceId) => {
+                const storedTs = next[deviceId];
+                const currentTs = deviceData[deviceId]?.requestTimestamp;
+                // If we have a stored timestamp and the current one is newer (different), stop refreshing
+                if (currentTs && storedTs !== currentTs) {
+                    delete next[deviceId];
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
+        });
+    }, [deviceData]);
 
     // Handlers
 
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const handleSensorClick = async (deviceId: string, type: string) => {
         setSelectedSensor({ deviceId, type });
-        setLoadingHistory(true);
+        setSensorHistory([]);
+        setIsHistoryLoading(true);
         sensorHistoryModalRef.current?.open();
+
         try {
-            const res = await api.get(`/devices/${deviceId}/readings?type=${type}`);
+            const res = await api.get(`/devices/${deviceId}/readings`, {
+                params: { type },
+            });
             setSensorHistory(res.data);
         } catch (error) {
-            console.error(error);
+            console.error("Failed to fetch sensor history", error);
             toast.error("Failed to fetch sensor history");
         } finally {
-            setLoadingHistory(false);
+            setIsHistoryLoading(false);
         }
     };
 
@@ -149,34 +184,10 @@ export default function RoomDetailsScreen() {
         }
     };
 
-    const handleSwitchPress = (device: SwitchDevice, sw: SwitchToggle) => {
+    const handleDevicePress = (device: SmartRoomDevice) => {
         setSelectedDevice(device);
-        setSelectedSwitch(sw);
-        setXyz({ x: sw.x.toString(), y: sw.y.toString(), z: sw.z.toString() });
         setBuzzerThreshold(device.buzzerThreshold?.toString() || "500");
         setViewMode("control");
-    };
-
-    const toggleSwitch = async (deviceId: string, switchId: string, currentState: boolean) => {
-        sendCommand(deviceId, { switchId, power: currentState ? "OFF" : "ON" });
-    };
-
-    const handleCalibration = async () => {
-        if (!selectedDevice || !selectedSwitch) return;
-        const deviceUrl = `http://${selectedDevice.name}.local/move?switchId=${selectedSwitch.id}&x=${xyz.x}&y=${xyz.y}&z=${xyz.z}`;
-        try {
-            const res = await fetch(deviceUrl);
-            if (!res.ok) throw new Error("Request failed");
-            await api.patch(`/switches/${selectedSwitch.id}/calibration`, {
-                x: parseFloat(xyz.x),
-                y: parseFloat(xyz.y),
-                z: parseFloat(xyz.z),
-            });
-            toast.success("Calibration command sent and saved");
-            queryClient.invalidateQueries({ queryKey: ["room", id] });
-        } catch (error) {
-            toast.error(`Connection Failed: Ensure you are on the same Wi-Fi as ${selectedDevice.name}`);
-        }
     };
 
     const handleUpdateThreshold = async () => {
@@ -197,8 +208,10 @@ export default function RoomDetailsScreen() {
         }
     };
 
-    const handleToggleBuzzer = (deviceId: string, currentState: boolean) => {
-        sendCommand(deviceId, { type: "BUZZER", state: currentState ? "OFF" : "ON" });
+    const handleRefresh = (deviceId: string) => {
+        const currentTs = mergedDeviceData[deviceId]?.requestTimestamp;
+        setRefreshingDevices((prev) => ({ ...prev, [deviceId]: currentTs }));
+        sendCommand(deviceId, { type: "REFRESH" });
     };
 
     return (
@@ -236,26 +249,26 @@ export default function RoomDetailsScreen() {
                                     <DeviceList
                                         room={room}
                                         mergedDeviceData={mergedDeviceData}
-                                        onSwitchPress={handleSwitchPress}
-                                        onToggleSwitch={toggleSwitch}
+                                        onDevicePress={handleDevicePress}
                                     />
                                 ) : (
                                     <DeviceControl
                                         selectedDevice={selectedDevice}
-                                        selectedSwitch={selectedSwitch}
-                                        xyz={xyz}
-                                        setXyz={setXyz}
+                                        mergedDeviceData={mergedDeviceData}
                                         onBack={() => setViewMode("list")}
-                                        onToggleSwitch={toggleSwitch}
-                                        onCalibration={handleCalibration}
                                         buzzerThreshold={buzzerThreshold}
                                         setBuzzerThreshold={setBuzzerThreshold}
                                         onUpdateThreshold={handleUpdateThreshold}
-                                        onToggleBuzzer={handleToggleBuzzer}
                                     />
                                 )
                             ) : (
-                                <SensorList room={room} mergedDeviceData={mergedDeviceData} onSensorClick={handleSensorClick} />
+                                <SensorList
+                                    room={room}
+                                    mergedDeviceData={mergedDeviceData}
+                                    onSensorClick={handleSensorClick}
+                                    onRefresh={handleRefresh}
+                                    refreshingDevices={new Set(Object.keys(refreshingDevices))}
+                                />
                             )}
                         </ThemedView>
 
@@ -274,7 +287,7 @@ export default function RoomDetailsScreen() {
                             modalRef={sensorHistoryModalRef}
                             selectedSensor={selectedSensor}
                             sensorHistory={sensorHistory}
-                            loadingHistory={loadingHistory}
+                            isLoading={isHistoryLoading}
                         />
 
                         <ShareRoomModal

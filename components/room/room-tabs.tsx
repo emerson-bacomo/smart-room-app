@@ -1,4 +1,5 @@
 import { ThemedView } from "@/components/themed-view";
+import { useTheme } from "@/context/theme-context";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import React from "react";
 import { Button } from "../button";
@@ -19,6 +20,7 @@ export function RoomTabs({ activeTab, setActiveTab }: RoomTabsProps) {
 
     const { color: textColor } = useThemeColor("text", "color");
     const { color: textOppositeColor } = useThemeColor("text", "color", true);
+    const { darkThemed } = useTheme();
 
     return (
         <ThemedView className="flex-row mb-4 gap-2">
@@ -27,7 +29,7 @@ export function RoomTabs({ activeTab, setActiveTab }: RoomTabsProps) {
                 variant="none"
                 onclick={() => setActiveTab("devices")}
                 className="flex-1"
-                toggleColorClassName="bg-white"
+                toggleColorClassName={darkThemed("bg-white", "bg-gray-800")}
                 toggleValue={activeTab === "devices"}
                 labelStyle={{
                     color: activeTab === "devices" ? textOppositeColor : textColor,
@@ -38,7 +40,7 @@ export function RoomTabs({ activeTab, setActiveTab }: RoomTabsProps) {
                 variant="none"
                 onclick={() => setActiveTab("sensors")}
                 className="flex-1"
-                toggleColorClassName="bg-white"
+                toggleColorClassName={darkThemed("bg-white", "bg-gray-800")}
                 toggleValue={activeTab === "sensors"}
                 labelStyle={{
                     color: activeTab === "sensors" ? textOppositeColor : textColor,

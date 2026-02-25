@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
-import { useToast } from "@/context/toast-context";
+import { useAuthContext } from "@/context/auth-context";
+import { toast } from "sonner-native";
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView } from "react-native-webrtc";
@@ -11,11 +12,10 @@ interface RtcViewerProps {
 }
 
 export function RtcViewer({ cameraId }: RtcViewerProps) {
+    const { user } = useAuthContext();
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
     const socketRef = useRef<Socket | null>(null);
     const peerConnection = useRef<RTCPeerConnection | null>(null);
-
-    const toast = useToast();
 
     useEffect(() => {
         if (!cameraId) return;
@@ -50,7 +50,7 @@ export function RtcViewer({ cameraId }: RtcViewerProps) {
 
         // --- Socket Events ---
 
-        socketRef.current.emit("watcher", cameraId);
+        socketRef.current.emit("watcher", cameraId, user?.id);
 
         socketRef.current.on("offer", async (id: string, description: RTCSessionDescription) => {
             console.log(`[RTCViewer] Received offer from ${id}`);
@@ -92,7 +92,7 @@ export function RtcViewer({ cameraId }: RtcViewerProps) {
         socketRef.current.on("broadcaster", (onlineCameraId: string) => {
             if (onlineCameraId === cameraId) {
                 console.log("[RTCViewer] Broadcaster came online, retrying watcher registration");
-                socketRef.current?.emit("watcher", cameraId);
+                socketRef.current?.emit("watcher", cameraId, user?.id);
             }
         });
 
@@ -108,7 +108,7 @@ export function RtcViewer({ cameraId }: RtcViewerProps) {
             }
             setRemoteStream(null);
         };
-    }, [cameraId]);
+    }, [cameraId, user?.id]);
 
     return (
         <View className="flex-1 bg-black justify-center items-center">

@@ -3,7 +3,7 @@ import { Button } from "@/components/button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
-import { useToast } from "@/context/toast-context";
+import { toast } from "sonner-native";
 import api from "@/utilities/api";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
@@ -14,7 +14,6 @@ export function ManualJoinSection() {
     const [manualPassword, setManualPassword] = useState("");
     const [isJoining, setIsJoining] = useState(false);
     const [confirmRoomName, setConfirmRoomName] = useState("");
-    const toast = useToast();
     const confirmModalRef = useRef<AppModalRef>(null);
 
     const handleManualJoin = async (joinRoom = false) => {
@@ -64,7 +63,7 @@ export function ManualJoinSection() {
                 Device ID (DNS Name)
             </ThemedText>
             <ThemedTextInput
-                placeholder="e.g. switch-toggler-abcdef"
+                placeholder="e.g. smart-room-device-12345"
                 value={manualDeviceId}
                 onChangeText={setManualDeviceId}
                 className="mb-4"

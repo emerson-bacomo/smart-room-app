@@ -3,12 +3,11 @@ import { AppModal, AppModalRef } from "@/components/app-modal";
 import { Button } from "@/components/button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useToast } from "@/context/toast-context";
 import api from "@/utilities/api";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
-import { Menu, MenuItem } from "react-native-material-menu";
+import { toast } from "sonner-native";
 import { IconSymbol } from "./ui/icon-symbol";
 
 interface RoomItemProps {
@@ -20,8 +19,8 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
     const [menuVisible, setMenuVisible] = useState(false);
     const renameModalRef = useRef<AppModalRef>(null);
     const deleteModalRef = useRef<AppModalRef>(null);
-    const toast = useToast();
     const router = useRouter();
+    const menuModalRef = useRef<AppModalRef>(null);
 
     const handleDeleteConfirm = async () => {
         try {
@@ -57,36 +56,36 @@ export const RoomItem: React.FC<RoomItemProps> = ({ item, loadRooms }) => {
                     })
                 }
                 label={item.name}
+                useThemedText
                 labelClassName="font-semibold text-lg"
             />
 
-            <Menu
-                visible={menuVisible}
-                onRequestClose={() => setMenuVisible(false)}
-                anchor={
-                    <Button variant="none" onclick={() => setMenuVisible(true)} className="p-2">
-                        <IconSymbol name="ellipsis-vertical-sharp" library={Ionicons} size={16} />
-                    </Button>
-                }
-            >
-                <MenuItem
-                    onPress={() => {
-                        setMenuVisible(false);
-                        renameModalRef.current?.open(item.name);
-                    }}
-                >
-                    Rename
-                </MenuItem>
-                <MenuItem
-                    textStyle={{ color: "red" }}
-                    onPress={() => {
-                        setMenuVisible(false);
-                        deleteModalRef.current?.open();
-                    }}
-                >
-                    Delete
-                </MenuItem>
-            </Menu>
+            <Button variant="none" onclick={() => menuModalRef.current?.open()} className="p-2">
+                <IconSymbol name="ellipsis-vertical-sharp" library={Ionicons} size={16} />
+            </Button>
+
+            <AppModal ref={menuModalRef} title={item.name} footerType="NONE">
+                <ThemedView className="gap-2">
+                    <Button
+                        label="Rename Room"
+                        variant="a-bit-white"
+                        labelClassName="text-lg"
+                        onclick={() => {
+                            menuModalRef.current?.close();
+                            renameModalRef.current?.open(item.name);
+                        }}
+                    />
+                    <Button
+                        label="Delete Room"
+                        variant="danger"
+                        labelClassName="text-lg"
+                        onclick={() => {
+                            menuModalRef.current?.close();
+                            deleteModalRef.current?.open();
+                        }}
+                    />
+                </ThemedView>
+            </AppModal>
 
             <AppModal
                 ref={renameModalRef}

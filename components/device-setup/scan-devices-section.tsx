@@ -1,7 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 
@@ -35,7 +34,7 @@ export function ScanDevicesSection({
                 <View className="flex-1">
                     <ThemedText type="subtitle">Setup New Devices</ThemedText>
                     <ThemedText className="mt-1" style={{ opacity: 0.5 }}>
-                        Available Switch Toggler devices nearby
+                        Available Smart Room Devices nearby
                     </ThemedText>
                 </View>
                 <View className="flex-row items-center gap-3">
@@ -48,7 +47,7 @@ export function ScanDevicesSection({
                         {isScanning ? (
                             <ActivityIndicator size={18} color="#6366f1" />
                         ) : (
-                            <IconSymbol library={MaterialIcons} name="refresh" size={18} color="#6366f1" />
+                            <IconSymbol name="refresh" size={18} color="#6366f1" />
                         )}
                     </Pressable>
                     {Object.values(selectedDevices).some(Boolean) && (
@@ -62,11 +61,11 @@ export function ScanDevicesSection({
             <View className="mb-8">
                 {devices.length === 0 ? (
                     <ThemedView className="items-center justify-center p-10 rounded-3xl border-dashed" bordered>
-                        <IconSymbol library={MaterialIcons} name="bluetooth" size={48} color="#4b5563" />
+                        <IconSymbol name="bluetooth" size={48} color="#4b5563" />
                         <ThemedText className="mt-4 text-center" style={{ opacity: 0.5 }}>
                             {isScanning
                                 ? "Looking for devices..."
-                                : "No devices found yet.\nTap scan to look for Switch Togglers."}
+                                : "No devices found yet.\nTap scan to look for Smart Room Devices."}
                         </ThemedText>
                     </ThemedView>
                 ) : (
@@ -83,9 +82,7 @@ export function ScanDevicesSection({
                                         selectedDevices[item.BSSID] ? "bg-indigo-500 border-indigo-500" : "border-gray-500"
                                     }`}
                                 >
-                                    {selectedDevices[item.BSSID] && (
-                                        <IconSymbol library={MaterialIcons} name="checkmark" size={16} color="white" />
-                                    )}
+                                    {selectedDevices[item.BSSID] && <IconSymbol name="check" size={16} />}
                                 </View>
                                 <View className="flex-1">
                                     <ThemedText type="defaultSemiBold">{item.SSID}</ThemedText>
@@ -93,12 +90,7 @@ export function ScanDevicesSection({
                                         {item.BSSID}
                                     </ThemedText>
                                 </View>
-                                <IconSymbol
-                                    library={MaterialIcons}
-                                    name="wifi"
-                                    size={20}
-                                    color={item.level > -60 ? "#4ade80" : "#facc15"}
-                                />
+                                <IconSymbol name="wifi" size={20} color={item.level > -60 ? "#4ade80" : "#facc15"} />
                             </ThemedView>
                         </Pressable>
                     ))

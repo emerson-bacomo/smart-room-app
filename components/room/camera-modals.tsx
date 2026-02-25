@@ -2,7 +2,7 @@ import { AppModal, AppModalRef } from "@/components/app-modal";
 import { Button } from "@/components/button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useToast } from "@/context/toast-context";
+import { toast } from "sonner-native";
 import api from "@/utilities/api";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "@tanstack/react-query";
@@ -51,7 +51,6 @@ export function CameraModals({
     });
 
     const [linking, setLinking] = useState(false);
-    const toast = useToast();
     const confirmMoveModalRef = useRef<AppModalRef>(null);
     const [cameraToMove, setCameraToMove] = useState<OwnedCamera | null>(null);
 

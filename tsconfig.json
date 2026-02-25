@@ -2,8 +2,7 @@
     "extends": "expo/tsconfig.base",
     "compilerOptions": {
         "jsx": "react",
-        "module": "Node16",
-        "moduleResolution": "node16",
+        "moduleResolution": "bundler",
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "strict": true,

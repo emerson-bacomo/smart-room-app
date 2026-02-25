@@ -8,27 +8,28 @@ import "../global.css";
 import { AuthProvider } from "@/context/auth-context";
 import { MqttProvider } from "@/context/mqtt-context";
 import { ThemeProvider as AppThemeProvider } from "@/context/theme-context";
-import { ToastProvider } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Toaster } from "sonner-native";
 
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
     return (
-        <QueryClientProvider client={queryClient}>
-            <AppThemeProvider>
-                <AuthProvider>
-                    <ToastProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <QueryClientProvider client={queryClient}>
+                <AppThemeProvider>
+                    <AuthProvider>
                         <MqttProvider>
                             <RootLayoutContent />
                         </MqttProvider>
-                    </ToastProvider>
-                </AuthProvider>
-            </AppThemeProvider>
-        </QueryClientProvider>
+                    </AuthProvider>
+                </AppThemeProvider>
+            </QueryClientProvider>
+        </GestureHandlerRootView>
     );
 }
 
@@ -67,7 +68,9 @@ function RootLayoutContent() {
                 <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
                 <Stack.Screen name="rooms/[id]" options={{ title: "Room Details" }} />
                 <Stack.Screen name="settings" options={{ title: "Settings" }} />
+                <Stack.Screen name="device-setup/configure" options={{ title: "Configure Devices" }} />
             </Stack>
+            <Toaster theme={colorScheme} />
             <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
         </ThemeProvider>
     );

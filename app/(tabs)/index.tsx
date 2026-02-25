@@ -7,7 +7,6 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -15,6 +14,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import { ActivityIndicator, FlatList, RefreshControl } from "react-native";
+import { toast } from "sonner-native";
 
 export type Room = {
     id: string;
@@ -25,6 +25,8 @@ export default function RoomsScreen() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState("");
+
+    const menuModalRef = useRef<AppModalRef>(null);
 
     const createRoomModalRef = useRef<AppModalRef>(null);
     const joinRoomModalRef = useRef<AppModalRef>(null);
@@ -42,8 +44,6 @@ export default function RoomsScreen() {
         },
         enabled: !!user,
     });
-
-    const toast = useToast();
 
     const handleCreateRoom = async (name: string) => {
         try {
@@ -63,11 +63,24 @@ export default function RoomsScreen() {
 
     return (
         <ThemedSafeAreaView className="flex-1 px-5 pt-4 gap-4">
-            <ThemedView className="flex-row justify-between items-center mb-4">
+            <ThemedView className="flex-row justify-between items-center mb-4 z-50">
                 <ThemedText type="subtitle">My Rooms</ThemedText>
-                <Button variant="none" onclick={() => joinRoomModalRef.current?.open()}>
-                    <IconSymbol name="enter-outline" library={Ionicons} />
-                </Button>
+                <ThemedView className="relative z-50">
+                    <Button variant="none" onclick={() => menuModalRef.current?.open()}>
+                        <IconSymbol name="ellipsis-vertical" library={Ionicons} />
+                    </Button>
+                    <AppModal ref={menuModalRef} title="Menu" footerType="NONE">
+                        <Button
+                            label="Join Room"
+                            variant="none"
+                            labelClassName="text-lg"
+                            onclick={() => {
+                                menuModalRef.current?.close();
+                                joinRoomModalRef.current?.open();
+                            }}
+                        />
+                    </AppModal>
+                </ThemedView>
             </ThemedView>
 
             <ThemedTextInput placeholder="Search Rooms..." value={searchQuery} onChangeText={setSearchQuery} />

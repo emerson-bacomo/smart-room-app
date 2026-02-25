@@ -1,11 +1,12 @@
 import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
-import { useToast } from "@/context/toast-context";
-import React, { useState } from "react";
+import { toast } from "sonner-native";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 
 // Components
-import { ConfigureDevicesView, requestPermissions } from "@/components/device-setup/configure-devices-view";
+import { requestPermissions } from "@/components/device-setup/configure-devices-view";
 import { ManualJoinSection } from "@/components/device-setup/manual-join-section";
 import { ScanDevicesSection, WifiNetwork } from "@/components/device-setup/scan-devices-section";
 import { SettedUpDevicesSection } from "@/components/device-setup/setted-up-devices-section";
@@ -14,10 +15,13 @@ export default function DeviceSetupScreen() {
     const [devices, setDevices] = useState<WifiNetwork[]>([]);
     const [selectedDevices, setSelectedDevices] = useState<{ [key: string]: boolean }>({});
     const [isScanning, setIsScanning] = useState(false);
-    const [setupMode, setSetupMode] = useState(false);
-    const toast = useToast();
+    const router = useRouter();
 
-    const handleScanDevices = async () => {
+    useEffect(() => {
+        handleScanDevices();
+    }, []);
+
+    const handleScanDevices = useCallback(async () => {
         setIsScanning(true);
         console.log("Starting device scan...");
 
@@ -46,7 +50,7 @@ export default function DeviceSetupScreen() {
                 return;
             }
 
-            const filtered = wifiList.filter((net) => net.SSID && net.SSID.startsWith("switch-toggler-"));
+            const filtered = wifiList.filter((net) => net.SSID && net.SSID.startsWith("smart-room-device-"));
             console.log("Filtered devices:", filtered);
             setDevices(
                 filtered.map((n) => ({
@@ -66,7 +70,8 @@ export default function DeviceSetupScreen() {
         } finally {
             setIsScanning(false);
         }
-    };
+    }, [toast]);
+
     const toggleSelection = (bssid: string) => {
         setSelectedDevices((prev) => ({
             ...prev,
@@ -74,36 +79,38 @@ export default function DeviceSetupScreen() {
         }));
     };
 
+    const handleSetup = () => {
+        const hasSelection = Object.values(selectedDevices).some((v) => v);
+        if (!hasSelection) {
+            toast.info("Please select at least one device to setup");
+            return;
+        }
+
+        router.push({
+            pathname: "/device-setup/configure",
+            params: {
+                devices: JSON.stringify(devices),
+                selectedDevices: JSON.stringify(selectedDevices),
+            },
+        });
+    };
+
     return (
-        <ThemedSafeAreaView className="flex-1 px-6 pt-4">
-            {(() => {
-                if (setupMode) {
-                    return (
-                        <ConfigureDevicesView
-                            devices={devices}
-                            selectedDevices={selectedDevices}
-                            onBack={() => setSetupMode(false)}
-                        />
-                    );
-                }
+        <ThemedSafeAreaView className="flex-1">
+            <ScrollView showsVerticalScrollIndicator={false} className="px-6" contentContainerStyle={{ paddingBottom: 120 }}>
+                <ManualJoinSection />
 
-                return (
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-                        <ManualJoinSection />
+                <ScanDevicesSection
+                    devices={devices}
+                    selectedDevices={selectedDevices}
+                    isScanning={isScanning}
+                    onScan={handleScanDevices}
+                    onToggleSelection={toggleSelection}
+                    onSetup={handleSetup}
+                />
 
-                        <ScanDevicesSection
-                            devices={devices}
-                            selectedDevices={selectedDevices}
-                            isScanning={isScanning}
-                            onScan={handleScanDevices}
-                            onToggleSelection={toggleSelection}
-                            onSetup={() => setSetupMode(true)}
-                        />
-
-                        <SettedUpDevicesSection />
-                    </ScrollView>
-                );
-            })()}
+                <SettedUpDevicesSection />
+            </ScrollView>
         </ThemedSafeAreaView>
     );
 }

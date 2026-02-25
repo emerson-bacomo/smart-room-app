@@ -1,4 +1,5 @@
 import { cssInterop } from "nativewind";
+import React from "react";
 import Svg, { Defs, LinearGradient, Path, Rect, Stop, SvgProps } from "react-native-svg";
 
 type Props = {
@@ -29,15 +30,7 @@ export function WhiteKey({ className, ...props }: Props) {
                     <Stop offset="1" stopColor="#D4D4D4" />
                 </LinearGradient>
             </Defs>
-            <Rect
-                x="0.5"
-                y="0.5"
-                width="39"
-                height="119"
-                rx="2"
-                fill="url(#whiteGrad)"
-                stroke="#E0E0E0"
-            />
+            <Rect x="0.5" y="0.5" width="39" height="119" rx="2" fill="url(#whiteGrad)" stroke="#E0E0E0" />
             <Path d="M1 112 H39 V117 Q39 119 37 119 H3 Q1 119 1 117 Z" fill="#BDBDBD" />
         </Svg>
     );

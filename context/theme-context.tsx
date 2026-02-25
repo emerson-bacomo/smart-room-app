@@ -8,6 +8,7 @@ interface ThemeContextType {
     theme: ThemeMode;
     setTheme: (theme: ThemeMode) => Promise<void>;
     colorScheme: "light" | "dark";
+    darkThemed: (dark: string, light: string) => string;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -32,9 +33,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     const colorScheme = theme === "system" ? deviceColorScheme || "light" : theme;
+    const darkThemed = (dark: string, light: string) => (colorScheme === "dark" ? dark : light);
 
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, colorScheme: colorScheme as "light" | "dark" }}>
+        <ThemeContext.Provider value={{ theme, setTheme, colorScheme: colorScheme as "light" | "dark", darkThemed }}>
             {children}
         </ThemeContext.Provider>
     );

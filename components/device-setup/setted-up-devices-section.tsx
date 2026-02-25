@@ -3,7 +3,6 @@ import { Button } from "@/components/button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
 import Feather from "@expo/vector-icons/Feather";
@@ -13,11 +12,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { toast } from "sonner-native";
 
 export function SettedUpDevicesSection() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
-    const toast = useToast();
 
     const renameModalRef = useRef<AppModalRef>(null);
     const roomsModalRef = useRef<AppModalRef>(null);
@@ -175,11 +174,10 @@ export function SettedUpDevicesSection() {
                                 key={r.id}
                                 label={r.name}
                                 variant="none"
-                                className="bg-white/10 p-4 rounded-xl border border-white/10"
+                                className="bg-white/10 rounded-xl border border-white/10"
                                 onclick={() => handleRoomAssign(r.id)}
                             />
                         ))}
-                        <Button label="Unassign" variant="danger" className="mt-2" onclick={() => handleRoomAssign(null)} />
                     </ThemedView>
                 </ScrollView>
             </AppModal>
@@ -188,8 +186,7 @@ export function SettedUpDevicesSection() {
                 <ThemedView className="gap-3 bg-transparent">
                     <Button
                         label="Rename Device"
-                        variant="none"
-                        className="bg-white/10 p-4 rounded-xl border border-white/10"
+                        variant="a-bit-white"
                         onclick={() => {
                             actionModalRef.current?.close();
                             handleRename(selectedDevice);
@@ -197,13 +194,20 @@ export function SettedUpDevicesSection() {
                     />
                     <Button
                         label={selectedDevice?.roomId ? "Move Room" : "Add to Room"}
-                        variant="none"
-                        className="bg-white/10 p-4 rounded-xl border border-white/10"
+                        variant="a-bit-white"
                         onclick={() => {
                             actionModalRef.current?.close();
                             handleAddToRoom(selectedDevice);
                         }}
                     />
+                    {selectedDevice?.room?.name && (
+                        <Button
+                            label={`Remove from ${selectedDevice?.room?.name}`}
+                            variant="danger"
+                            className="mt-2"
+                            onclick={() => handleRoomAssign(null)}
+                        />
+                    )}
                 </ThemedView>
             </AppModal>
         </>

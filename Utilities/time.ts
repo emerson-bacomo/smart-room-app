@@ -8,7 +8,16 @@
 export function formatRelativeTime(timestamp: string | number | Date | undefined): string {
     if (!timestamp) return "Never";
 
-    const date = new Date(timestamp);
+    let timeValue: number;
+    if (typeof timestamp === "number") {
+        // If the number is less than 10 billion, it's likely a Unix timestamp in seconds
+        // (10 billion ms is only ~4 months after epoch, while 10 billion seconds is ~300 years)
+        timeValue = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
+    } else {
+        timeValue = new Date(timestamp).getTime();
+    }
+
+    const date = new Date(timeValue);
     if (isNaN(date.getTime())) return "Invalid date";
 
     const now = Date.now();

@@ -15,7 +15,7 @@ if (typeof global.process === "undefined") {
     global.process = process;
 }
 
-import { SwitchDevice } from "@/components/room/switch-list";
+import { SmartRoomDevice } from "@/components/room/device-list";
 import { useAuth } from "@/hooks/use-auth";
 import { refreshAccessToken } from "@/utilities/token-refresh";
 import Constants from "expo-constants";
@@ -23,7 +23,7 @@ import * as SecureStore from "expo-secure-store";
 
 interface MqttContextType {
     connected: boolean;
-    deviceData: Record<string, SwitchDevice>;
+    deviceData: Record<string, SmartRoomDevice>;
     subscribe: (deviceId: string) => void;
     unsubscribe: (deviceId: string) => void;
     subscribeToDevices: (deviceIds: string[]) => void;
@@ -35,8 +35,9 @@ const MqttContext = createContext<MqttContextType | undefined>(undefined);
 
 export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [client, setClient] = useState<mqtt.MqttClient | null>(null);
+    const clientRef = useRef<mqtt.MqttClient | null>(null);
     const [connected, setConnected] = useState(false);
-    const [deviceData, setDeviceData] = useState<Record<string, SwitchDevice>>({});
+    const [deviceData, setDeviceData] = useState<Record<string, SmartRoomDevice>>({});
     const { user } = useAuth();
     const isRefreshing = useRef(false);
 
@@ -100,65 +101,58 @@ export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (parts[2] === "status") {
                 // Update device status
                 const messageStr = message.toString();
-                // Try parsing as JSON first
-                const payload = JSON.parse(messageStr);
-                setDeviceData((prev) => ({
-                    ...prev,
-                    [deviceId]: { ...prev[deviceId], ...payload },
-                }));
+                try {
+                    const payload = JSON.parse(messageStr);
+                    setDeviceData((prev) => {
+                        const current = prev[deviceId];
+                        // Discard stale updates if they arrive out-of-order
+                        if (current?.requestTimestamp && payload.requestTimestamp) {
+                            if (new Date(payload.requestTimestamp) < new Date(current.requestTimestamp)) {
+                                console.log(`[MQTT] Discarding stale update for ${deviceId}`);
+                                return prev;
+                            }
+                        }
+                        return {
+                            ...prev,
+                            [deviceId]: { ...prev[deviceId], ...payload },
+                        };
+                    });
+                } catch (e) {
+                    console.error("Error parsing MQTT status JSON:", e);
+                }
             }
         });
 
         mqttClient.on("close", () => setConnected(false));
+        clientRef.current = mqttClient;
         setClient(mqttClient);
     }, [user, client]);
 
-    const subscribe = useCallback(
-        (deviceId: string) => {
-            if (client?.connected) client.subscribe(`devices/${deviceId}/status`);
-        },
-        [client],
-    );
+    // All callbacks use clientRef so their references stay stable across reconnects.
+    // This prevents useEffect/useFocusEffect from re-firing just because MQTT reconnected.
+    const subscribe = useCallback((deviceId: string) => {
+        if (clientRef.current?.connected) clientRef.current.subscribe(`devices/${deviceId}/status`, { qos: 0 });
+    }, []);
 
-    const unsubscribe = useCallback(
-        (deviceId: string) => {
-            if (client?.connected) {
-                client.unsubscribe(`devices/${deviceId}/status`);
-            }
-        },
-        [client],
-    );
+    const unsubscribe = useCallback((deviceId: string) => {
+        if (clientRef.current?.connected) clientRef.current.unsubscribe(`devices/${deviceId}/status`);
+    }, []);
 
-    const subscribeToDevices = useCallback(
-        (deviceIds: string[]) => {
-            if (client?.connected) {
-                deviceIds.forEach((deviceId) => {
-                    client.subscribe(`devices/${deviceId}/status`);
-                });
-            }
-        },
-        [client],
-    );
+    const subscribeToDevices = useCallback((deviceIds: string[]) => {
+        deviceIds.forEach((deviceId) => {
+            if (clientRef.current?.connected) clientRef.current.subscribe(`devices/${deviceId}/status`, { qos: 0 });
+        });
+    }, []);
 
-    const unsubscribeFromDevices = useCallback(
-        (deviceIds: string[]) => {
-            if (client?.connected) {
-                deviceIds.forEach((deviceId) => {
-                    client.unsubscribe(`devices/${deviceId}/status`);
-                });
-            }
-        },
-        [client],
-    );
+    const unsubscribeFromDevices = useCallback((deviceIds: string[]) => {
+        deviceIds.forEach((deviceId) => {
+            if (clientRef.current?.connected) clientRef.current.unsubscribe(`devices/${deviceId}/status`);
+        });
+    }, []);
 
-    const sendCommand = useCallback(
-        (deviceId: string, cmd: object) => {
-            if (client?.connected) {
-                client.publish(`devices/${deviceId}/cmd`, JSON.stringify(cmd));
-            }
-        },
-        [client],
-    );
+    const sendCommand = useCallback((deviceId: string, cmd: object) => {
+        if (clientRef.current?.connected) clientRef.current.publish(`devices/${deviceId}/cmd`, JSON.stringify(cmd), { qos: 0 });
+    }, []);
 
     useEffect(() => {
         if (user) connect();

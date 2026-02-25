@@ -1,22 +1,22 @@
 import { Button } from "@/components/button";
-import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
-import { PermissionsAndroid, Platform, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, PermissionsAndroid, Platform, Pressable, ScrollView, View } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
+import { toast } from "sonner-native";
 import { WifiNetwork } from "./scan-devices-section";
 
 interface ConfigureDevicesViewProps {
     devices: WifiNetwork[];
     selectedDevices: { [key: string]: boolean };
-    onBack: () => void;
+    onBack?: () => void;
+    isScreen?: boolean;
 }
 
 export const requestPermissions = async () => {
@@ -27,13 +27,12 @@ export const requestPermissions = async () => {
     return true;
 };
 
-export function ConfigureDevicesView({ devices, selectedDevices, onBack }: ConfigureDevicesViewProps) {
+export function ConfigureDevicesView({ devices, selectedDevices, onBack, isScreen }: ConfigureDevicesViewProps) {
     const { user } = useAuth();
     const queryClient = useQueryClient();
-    const toast = useToast();
 
-    const [targetSsid, setTargetSsid] = useState("POCO F7");
-    const [password, setPassword] = useState("00000000");
+    const [targetSsid, setTargetSsid] = useState("");
+    const [password, setPassword] = useState("");
     const [availableNetworks, setAvailableNetworks] = useState<WifiNetwork[]>([]);
     const [isScanningNetworks, setIsScanningNetworks] = useState(false);
     const [showNetworkList, setShowNetworkList] = useState(false);
@@ -61,7 +60,7 @@ export function ConfigureDevicesView({ devices, selectedDevices, onBack }: Confi
 
         try {
             const wifiList = await WifiManager.reScanAndLoadWifiList();
-            const networks = wifiList.filter((n) => n.SSID && !n.SSID.startsWith("switch-toggler-"));
+            const networks = wifiList.filter((n) => n.SSID && !n.SSID.startsWith("smart-room-device-"));
             setAvailableNetworks(networks as unknown as WifiNetwork[]);
             setShowNetworkList(true);
 
@@ -126,7 +125,16 @@ export function ConfigureDevicesView({ devices, selectedDevices, onBack }: Confi
 
                     setSetupStatus((prev) => ({ ...prev, [device.BSSID]: "success" }));
                 } catch (err) {
-                    console.error(`Error provisioning ${device.SSID}:`, err);
+                    const errorMsg = err instanceof Error ? err.message : String(err);
+                    if (errorMsg.includes("enable wifi manually")) {
+                        toast.error("Please enable Wi-Fi on your device to proceed.");
+                    } else if (errorMsg.includes("Password required")) {
+                        toast.error(`A setup password is required for ${device.SSID}.`);
+                    } else if (errorMsg.includes("Connection timeout")) {
+                        toast.error("The connection to the device has timed out. Please try again.");
+                    } else {
+                        console.error(`Error provisioning ${device.SSID}:`, err);
+                    }
                     setSetupStatus((prev) => ({ ...prev, [device.BSSID]: "error" }));
                     return;
                 }
@@ -145,121 +153,133 @@ export function ConfigureDevicesView({ devices, selectedDevices, onBack }: Confi
     };
 
     return (
-        <ThemedSafeAreaView className="flex-1 px-6 pt-4">
-            <View className="flex-row items-center mb-6">
-                <Pressable onPress={onBack} className="mr-4">
-                    <IconSymbol library={MaterialIcons} name="chevron-left" size={24} color="#6366f1" />
-                </Pressable>
-                <ThemedText type="subtitle">Configure Devices</ThemedText>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-                <ThemedView className="p-6 rounded-3xl bg-white/10 border border-white/20 mb-6">
-                    <ThemedText type="subtitle" className="mb-4">
-                        Target Wi-Fi
-                    </ThemedText>
-                    <ThemedText className="mb-4 text-gray-400">
-                        Credentials the devices will use to connect to internet.
-                    </ThemedText>
-
-                    <ThemedText type="defaultSemiBold" className="mb-2">
-                        SSID
-                    </ThemedText>
-                    <View className="flex-row items-center mb-2">
-                        <ThemedTextInput
-                            className="flex-1 mb-0"
-                            placeholder="Enter SSID"
-                            value={targetSsid}
-                            onChangeText={setTargetSsid}
-                        />
-                        <Button className="ml-2 px-3 h-12" onclick={handleScanNetworks}>
-                            {isScanningNetworks ? (
-                                <IconSymbol library={MaterialIcons} name="refresh" size={20} color="#6366f1" />
-                            ) : (
-                                <IconSymbol library={MaterialIcons} name="wifi" size={20} />
-                            )}
-                        </Button>
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        >
+            <View className={`flex-1 ${!isScreen ? "px-6" : "py-6"}`}>
+                {!isScreen && (
+                    <View className="flex-row items-center mb-6">
+                        <Pressable onPress={onBack} className="mr-4">
+                            <IconSymbol library={MaterialIcons} name="chevron-left" size={24} color="#6366f1" />
+                        </Pressable>
+                        <ThemedText type="subtitle">Configure Devices</ThemedText>
                     </View>
+                )}
 
-                    {showNetworkList && (
-                        <ThemedView className="mb-4 max-h-48 border border-white/10 rounded-xl overflow-hidden">
-                            <ScrollView>
-                                {availableNetworks.map((net) => (
-                                    <Pressable
-                                        key={net.BSSID}
-                                        onPress={() => {
-                                            setTargetSsid(net.SSID);
-                                            setShowNetworkList(false);
-                                        }}
-                                        className="p-3 border-b border-white/5 flex-row justify-between items-center"
-                                    >
-                                        <ThemedText>{net.SSID}</ThemedText>
-                                        <IconSymbol library={MaterialIcons} name="wifi" size={16} color="#4ade80" />
-                                    </Pressable>
-                                ))}
-                            </ScrollView>
-                        </ThemedView>
-                    )}
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    className={isScreen ? "px-6" : ""}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <ThemedView className="p-6 rounded-3xl bg-white/10 border border-white/20 mb-6">
+                        <ThemedText type="subtitle" className="mb-4">
+                            Target Wi-Fi
+                        </ThemedText>
+                        <ThemedText className="mb-4 text-gray-400">
+                            Credentials the devices will use to connect to internet.
+                        </ThemedText>
 
-                    <ThemedText type="defaultSemiBold" className="mb-2">
-                        Password
-                    </ThemedText>
-                    <ThemedTextInput
-                        className="mb-6"
-                        placeholder="Enter Password"
-                        secureTextEntry
-                        value={password}
-                        onChangeText={setPassword}
-                    />
+                        <ThemedText type="defaultSemiBold" className="mb-2">
+                            SSID
+                        </ThemedText>
+                        <View className="flex-row items-center mb-2">
+                            <ThemedTextInput
+                                className="flex-1 mb-0"
+                                placeholder="Enter SSID"
+                                value={targetSsid}
+                                onChangeText={setTargetSsid}
+                            />
+                            <Button className="ml-2 px-3 h-12" onclick={handleScanNetworks}>
+                                {isScanningNetworks ? (
+                                    <ActivityIndicator />
+                                ) : (
+                                    <IconSymbol library={MaterialIcons} name="wifi" size={20} />
+                                )}
+                            </Button>
+                        </View>
 
-                    <View className="h-[1px] bg-white/10 mb-6" />
+                        {showNetworkList && (
+                            <ThemedView className="mb-4 max-h-48 border border-white/10 rounded-xl overflow-hidden">
+                                <ScrollView nestedScrollEnabled={true}>
+                                    {availableNetworks.map((net) => (
+                                        <Pressable
+                                            key={net.BSSID}
+                                            onPress={() => {
+                                                setTargetSsid(net.SSID);
+                                                setShowNetworkList(false);
+                                            }}
+                                            className="p-3 border-b border-white/5 flex-row justify-between items-center"
+                                        >
+                                            <ThemedText>{net.SSID}</ThemedText>
+                                            <IconSymbol library={MaterialIcons} name="wifi" size={16} color="#4ade80" />
+                                        </Pressable>
+                                    ))}
+                                </ScrollView>
+                            </ThemedView>
+                        )}
 
-                    <ThemedText type="subtitle" className="mb-4">
-                        Device Hotspots
-                    </ThemedText>
-                    <ThemedText className="mb-4 text-gray-400">Enter passwords for the device hotspots.</ThemedText>
+                        <ThemedText type="defaultSemiBold" className="mb-2">
+                            Password
+                        </ThemedText>
+                        <ThemedTextInput
+                            className="mb-6"
+                            placeholder="Enter Password"
+                            secureTextEntry
+                            value={password}
+                            onChangeText={setPassword}
+                        />
 
-                    {selectedList.map((device) => {
-                        const isProtected = device.capabilities?.includes("WPA") || device.capabilities?.includes("WEP");
-                        return (
-                            <View key={device.BSSID} className="mb-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-                                <View className="flex-row justify-between items-center mb-2">
-                                    <ThemedText type="defaultSemiBold">{device.SSID}</ThemedText>
-                                    {setupStatus[device.BSSID] === "success" && (
-                                        <IconSymbol library={MaterialIcons} name="check-circle" size={20} color="#4ade80" />
-                                    )}
-                                    {setupStatus[device.BSSID] === "error" && (
-                                        <IconSymbol library={MaterialIcons} name="warning" size={20} color="#ef4444" />
-                                    )}
-                                    {setupStatus[device.BSSID] === "connecting" && (
-                                        <IconSymbol library={MaterialIcons} name="sync" size={20} color="#6366f1" />
+                        <View className="h-[1px] bg-white/10 mb-6" />
+
+                        <ThemedText type="subtitle" className="mb-4">
+                            Device Hotspots
+                        </ThemedText>
+                        <ThemedText className="mb-4 text-gray-400">Enter passwords for the device hotspots.</ThemedText>
+
+                        {selectedList.map((device) => {
+                            const isProtected = device.capabilities?.includes("WPA") || device.capabilities?.includes("WEP");
+                            return (
+                                <View key={device.BSSID} className="mb-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+                                    <View className="flex-row justify-between items-center mb-2">
+                                        <ThemedText type="defaultSemiBold">{device.SSID}</ThemedText>
+                                        {setupStatus[device.BSSID] === "success" && (
+                                            <IconSymbol library={MaterialIcons} name="check-circle" size={20} color="#4ade80" />
+                                        )}
+                                        {setupStatus[device.BSSID] === "error" && (
+                                            <IconSymbol library={MaterialIcons} name="warning" size={20} color="#ef4444" />
+                                        )}
+                                        {setupStatus[device.BSSID] === "connecting" && <ActivityIndicator />}
+                                    </View>
+                                    {isProtected ? (
+                                        <ThemedTextInput
+                                            placeholder="Hotspot Password"
+                                            secureTextEntry
+                                            value={devicePasswords[device.BSSID] || ""}
+                                            onChangeText={(val) =>
+                                                setDevicePasswords((prev) => ({ ...prev, [device.BSSID]: val }))
+                                            }
+                                            className="mb-0"
+                                        />
+                                    ) : (
+                                        <ThemedText className="text-xs text-gray-500 italic">
+                                            Open Network (No password required)
+                                        </ThemedText>
                                     )}
                                 </View>
-                                {isProtected ? (
-                                    <ThemedTextInput
-                                        placeholder="Hotspot Password"
-                                        secureTextEntry
-                                        value={devicePasswords[device.BSSID] || ""}
-                                        onChangeText={(val) => setDevicePasswords((prev) => ({ ...prev, [device.BSSID]: val }))}
-                                        className="mb-0"
-                                    />
-                                ) : (
-                                    <ThemedText className="text-xs text-gray-500 italic">
-                                        Open Network (No password required)
-                                    </ThemedText>
-                                )}
-                            </View>
-                        );
-                    })}
+                            );
+                        })}
 
-                    <Button
-                        variant="cta"
-                        label={isConnecting ? "Connecting..." : `Start Setup (${selectedList.length})`}
-                        onclick={handleConnect}
-                        disabled={isConnecting}
-                    />
-                </ThemedView>
-            </ScrollView>
-        </ThemedSafeAreaView>
+                        <Button
+                            variant="cta"
+                            label={isConnecting ? "Connecting..." : `Start Setup (${selectedList.length})`}
+                            onclick={handleConnect}
+                            disabled={isConnecting}
+                        />
+                    </ThemedView>
+                </ScrollView>
+            </View>
+        </KeyboardAvoidingView>
     );
 }

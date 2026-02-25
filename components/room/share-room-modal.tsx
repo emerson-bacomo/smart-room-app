@@ -5,7 +5,7 @@ import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { RelativeTimer } from "@/components/ui/relative-timer";
-import { useToast } from "@/context/toast-context";
+import { toast } from "sonner-native";
 import api from "@/utilities/api";
 import { useQuery } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
@@ -36,8 +36,6 @@ export function ShareRoomModal({ visible, onClose, roomId }: ShareRoomModalProps
 
     const shareUrl = shareData?.shareUrl || "";
     const expiresAt = shareData?.expiresAt;
-
-    const toast = useToast();
 
     const copyToClipboard = async () => {
         if (!shareUrl) return;
@@ -91,7 +89,6 @@ export function JoinRoomModal({ modalRef, onJoinSuccess }: JoinRoomModalProps) {
     const [mode, setMode] = useState<"scan" | "paste">("scan");
     const [shareLink, setShareLink] = useState("");
     const [joining, setJoining] = useState(false);
-    const toast = useToast();
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [scanned, setScanned] = useState(false);
     const [qrData, setQrData] = useState("");

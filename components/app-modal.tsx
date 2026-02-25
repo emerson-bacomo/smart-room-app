@@ -3,7 +3,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import React, { forwardRef, useImperativeHandle, useState } from "react";
-import { Modal, TouchableWithoutFeedback, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 
 export interface AppModalRef {
     open: (initialValue?: string) => void;
@@ -72,55 +72,55 @@ export const AppModal = forwardRef<AppModalRef, AppModalProps>(
 
         return (
             <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
-                <TouchableWithoutFeedback onPress={() => setVisible(false)}>
-                    <View className="flex-1 justify-center bg-black/60 px-6">
-                        <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-                            <ThemedView className="rounded-2xl p-6 shadow-2xl overflow-hidden gap-4" bordered>
-                                <ThemedText type="subtitle" className="text-center">
-                                    {title}
-                                </ThemedText>
+                <View className="flex-1 justify-center px-6">
+                    <Pressable
+                        style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0, 0, 0, 0.6)" }]}
+                        onPress={() => setVisible(false)}
+                    />
+                    <ThemedView className="rounded-2xl p-6 shadow-2xl overflow-hidden gap-4" bordered>
+                        <ThemedText type="subtitle" className="text-center">
+                            {title}
+                        </ThemedText>
 
-                                {children ? (
-                                    children
-                                ) : (
-                                    <ThemedTextInput value={value} onChangeText={setValue} placeholder={placeholder} autoFocus />
-                                )}
+                        {children ? (
+                            children
+                        ) : (
+                            <ThemedTextInput value={value} onChangeText={setValue} placeholder={placeholder} autoFocus />
+                        )}
 
-                                {footerType !== "NONE" && (
-                                    <ThemedView className="flex-row justify-end gap-2 bg-transparent">
-                                        {(Array.isArray(footerType) ? footerType : [footerType]).map((action, index) => {
-                                            if (action === "CANCEL" || action === "CLOSE") {
-                                                return (
-                                                    <Button
-                                                        key={index}
-                                                        label={action === "CLOSE" ? "Close" : "Cancel"}
-                                                        variant="none"
-                                                        className="bg-gray-500"
-                                                        labelClassName="text-white"
-                                                        onclick={() => setVisible(false)}
-                                                    />
-                                                );
-                                            }
+                        {footerType !== "NONE" && (
+                            <ThemedView className="flex-row justify-end gap-2 bg-transparent">
+                                {(Array.isArray(footerType) ? footerType : [footerType]).map((action, index) => {
+                                    if (action === "CANCEL" || action === "CLOSE") {
+                                        return (
+                                            <Button
+                                                key={index}
+                                                label={action === "CLOSE" ? "Close" : "Cancel"}
+                                                variant="none"
+                                                className="bg-gray-500"
+                                                labelClassName="text-white"
+                                                onclick={() => setVisible(false)}
+                                            />
+                                        );
+                                    }
 
-                                            if (action === "CONFIRM" || action === "DELETE") {
-                                                return (
-                                                    <Button
-                                                        key={index}
-                                                        label={action === "DELETE" ? "Delete" : submitLabel}
-                                                        variant={action === "DELETE" ? "danger" : submitVariant}
-                                                        onclick={onSubmitOverride ?? handleSubmit}
-                                                    />
-                                                );
-                                            }
+                                    if (action === "CONFIRM" || action === "DELETE") {
+                                        return (
+                                            <Button
+                                                key={index}
+                                                label={action === "DELETE" ? "Delete" : submitLabel}
+                                                variant={action === "DELETE" ? "danger" : submitVariant}
+                                                onclick={onSubmitOverride ?? handleSubmit}
+                                            />
+                                        );
+                                    }
 
-                                            return null;
-                                        })}
-                                    </ThemedView>
-                                )}
+                                    return null;
+                                })}
                             </ThemedView>
-                        </TouchableWithoutFeedback>
-                    </View>
-                </TouchableWithoutFeedback>
+                        )}
+                    </ThemedView>
+                </View>
             </Modal>
         );
     },

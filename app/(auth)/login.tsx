@@ -2,7 +2,7 @@ import { Button, ButtonProps } from "@/components/button";
 import { ThemedSafeAreaView } from "@/components/themed-safe-area-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useToast } from "@/context/toast-context";
+import { toast } from "sonner-native";
 import { useAuth } from "@/hooks/use-auth";
 import api from "@/utilities/api";
 import { GoogleSignin as GoogleNative } from "@react-native-google-signin/google-signin";
@@ -70,7 +70,6 @@ export default function Login() {
     };
 
     const { setUser } = useAuth();
-    const toast = useToast();
 
     const loginWithBackend = async (idToken: string) => {
         try {
