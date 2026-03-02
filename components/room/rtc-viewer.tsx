@@ -1,10 +1,12 @@
 import { ThemedText } from "@/components/themed-text";
 import { useAuthContext } from "@/context/auth-context";
-import { toast } from "sonner-native";
+import { X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView } from "react-native-webrtc";
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner-native";
 import { peerConstraints, SIGNALING_URL } from "../../web-rtc.config";
 
 interface RtcViewerProps {
@@ -13,7 +15,9 @@ interface RtcViewerProps {
 
 export function RtcViewer({ cameraId }: RtcViewerProps) {
     const { user } = useAuthContext();
+    const insets = useSafeAreaInsets();
     const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+    const [isFullScreen, setIsFullScreen] = useState(false);
     const socketRef = useRef<Socket | null>(null);
     const peerConnection = useRef<RTCPeerConnection | null>(null);
 
@@ -113,7 +117,23 @@ export function RtcViewer({ cameraId }: RtcViewerProps) {
     return (
         <View className="flex-1 bg-black justify-center items-center">
             {remoteStream ? (
-                <RTCView streamURL={remoteStream.toURL()} style={{ flex: 1, width: "100%" }} objectFit="cover" />
+                <>
+                    <Pressable className="flex-1 w-full" onPress={() => setIsFullScreen(true)}>
+                        <RTCView streamURL={remoteStream.toURL()} style={{ flex: 1, width: "100%" }} objectFit="cover" />
+                    </Pressable>
+
+                    <Modal visible={isFullScreen} animationType="fade" transparent={false}>
+                        <View className="flex-1 bg-black justify-center items-center">
+                            <RTCView streamURL={remoteStream.toURL()} style={{ flex: 1, width: "100%" }} objectFit="contain" />
+
+                            <View className="absolute right-4" style={{ top: insets.top + 10 }}>
+                                <TouchableOpacity onPress={() => setIsFullScreen(false)} className="bg-black/50 p-2 rounded-full">
+                                    <X color="white" size={24} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
+                </>
             ) : (
                 <View className="items-center">
                     <ActivityIndicator color="white" />
