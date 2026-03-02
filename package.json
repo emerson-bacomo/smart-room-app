@@ -24,6 +24,7 @@
     "class-variance-authority": "^0.7.1",
     "expo": "~54.0.33",
     "expo-auth-session": "^7.0.10",
+    "expo-build-properties": "~1.0.10",
     "expo-camera": "^17.0.10",
     "expo-clipboard": "^8.0.8",
     "expo-constants": "~18.0.13",
